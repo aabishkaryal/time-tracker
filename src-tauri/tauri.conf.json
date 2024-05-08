@@ -55,21 +55,18 @@
 		"windows": [
 			{
 				"fullscreen": false,
-				"height": 300,
-				"resizable": false,
+				"resizable": true,
 				"title": "Time Tracker",
-				"width": 300,
-				"visible": false,
+				"visible": true,
 				"hiddenTitle": false,
 				"decorations": true,
 				"focus": false,
-				"transparent": true
+				"transparent": false
 			}
 		],
 		"systemTray": {
 			"iconPath": "icons/icon.png",
-			"iconAsTemplate": true,
-			"menuOnLeftClick": false
+			"iconAsTemplate": true
 		},
 		"macOSPrivateApi": true
 	}

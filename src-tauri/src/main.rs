@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::{
-    generate_context, Builder, CustomMenuItem, Manager, SystemTray, SystemTrayEvent,
-    SystemTrayMenu, WindowEvent,
+    generate_context, AppHandle, Builder, CustomMenuItem, Manager, SystemTray, SystemTrayEvent,
+    SystemTrayMenu, Window, WindowEvent,
 };
 
 fn main() {
@@ -11,21 +11,7 @@ fn main() {
     let system_tray_menu = SystemTrayMenu::new().add_item(quit);
     Builder::default()
         .system_tray(SystemTray::new().with_menu(system_tray_menu))
-        .on_system_tray_event(|app, event| match event {
-            SystemTrayEvent::LeftClick {
-                position: _,
-                size: _,
-                ..
-            } => {
-                let window = app.get_window("main").unwrap();
-                // toggle application window
-                if window.is_visible().unwrap() {
-                    window.hide().unwrap();
-                } else {
-                    window.show().unwrap();
-                    window.set_focus().unwrap();
-                }
-            }
+        .on_system_tray_event(|_, event| match event {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "quit" => {
                     std::process::exit(0);
@@ -36,11 +22,23 @@ fn main() {
         })
         .on_window_event(|event| match event.event() {
             WindowEvent::CloseRequested { api, .. } => {
-                event.window().hide().unwrap();
+                hide_window(event.window());
                 api.prevent_close();
             }
             _ => {}
         })
+        // .setup(|app| Ok(app.set_activation_policy(ActivationPolicy::Accessory)))
         .run(generate_context!())
         .expect("error while running tauri application");
+}
+
+fn hide_window(window: &Window) {
+    #[cfg(not(target_os = "macos"))]
+    {
+        window().hide().unwrap();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        AppHandle::hide(&window.app_handle()).unwrap();
+    }
 }

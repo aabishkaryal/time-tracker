@@ -1,1 +1,1 @@
-<div class="container">Hello TimeTracker</div>
+<div class="bg-white">Hello TimeTracker</div>
