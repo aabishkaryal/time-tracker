@@ -2,6 +2,7 @@
 	import SideBar from '$lib/components/sideBar.svelte';
 	import Timer from '$lib/components/timer.svelte';
 	import { categoryStore, currentCategoryStore } from '$lib/store';
+
 	import dayjs from 'dayjs';
 	import duration from 'dayjs/plugin/duration';
 	dayjs.extend(duration);

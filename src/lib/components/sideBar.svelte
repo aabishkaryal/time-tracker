@@ -7,6 +7,7 @@
 	import icons from '$lib/icon';
 	import { categoryStore } from '$lib/store';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { toast } from 'svelte-sonner';
 
 	let categoryName = '';
 	let categoryIcon = '';
@@ -14,12 +15,23 @@
 	let dialogOpen = false;
 
 	async function createCategory() {
-		if (!categoryName) return;
-		if (!categoryIcon) return;
+		if (!categoryName) {
+			toast.error('Category Name is required.');
+			return;
+		}
+		if (!categoryIcon) {
+			toast.error('Category Icon is required.');
+			return;
+		}
+		if ($categoryStore.find((c) => c.name === categoryName)) {
+			toast.error(`Category with name "${categoryName}" already exists`);
+			return;
+		}
 		categoryStore.set([
 			...$categoryStore,
 			{ name: categoryName, icon: categoryIcon, time: '00:00:00' }
 		]);
+		toast.success(`Successfully created new category "${categoryName}"`);
 		categoryIcon = '';
 		categoryName = '';
 		toggleDialog();
