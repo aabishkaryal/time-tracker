@@ -1,23 +1,39 @@
 <script lang="ts">
+	import IconSelector from '$lib/components/iconSelector.svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import type { Category } from '$lib/types/category';
-	import IconSelector from '$lib/components/iconSelector.svelte';
+	import icons from '$lib/icon';
+	import { categoryStore } from '$lib/store';
+	import { ScrollArea } from '$lib/components/ui/scroll-area';
 
-	const categories: Category[] = [{ name: 'Work', icon: 'briefcase' }];
 	let categoryName = '';
 	let categoryIcon = '';
 
-	async function createCategory() {}
+	let dialogOpen = false;
+
+	async function createCategory() {
+		if (!categoryName) return;
+		if (!categoryIcon) return;
+		categoryStore.set([
+			...$categoryStore,
+			{ name: categoryName, icon: categoryIcon, time: '00:00:00' }
+		]);
+		categoryIcon = '';
+		categoryName = '';
+		toggleDialog();
+	}
+
+	function toggleDialog() {
+		dialogOpen = !dialogOpen;
+	}
 </script>
 
 <nav class="bg-gray-100 w-64 border-r border-gray-200 p-6">
 	<div class="flex items-center justify-between mb-6">
 		<h2 class="text-lg font-semibold">Categories</h2>
-		<Dialog.Root>
+		<Dialog.Root bind:open={dialogOpen} onOpenChange={toggleDialog} onOutsideClick={toggleDialog}>
 			<Dialog.Trigger class={buttonVariants({ variant: 'outline', size: 'sm' })}>
 				+ Add
 			</Dialog.Trigger>
@@ -39,17 +55,22 @@
 					</div>
 				</div>
 				<Dialog.Footer>
-					<Button type="submit" on:click={createCategory}>Save changes</Button>
+					<Button type="submit" on:click={createCategory} disabled={!categoryName || !categoryIcon}>
+						Save changes
+					</Button>
 				</Dialog.Footer>
 			</Dialog.Content>
 		</Dialog.Root>
 	</div>
-	<Separator decorative />
-	<div class="space-y-4 flex items-center justify-between">
-		{#each categories as c}
-			<div class="flex items-center gap-3">
-				<span class="font-medium">{c.name}</span>
-			</div>
-		{/each}
-	</div>
+	<ScrollArea>
+		<div
+			class="space-y-4 flex flex-col items-center justify-between border-t border-b border-gray-300 py-4">
+			{#each $categoryStore as c}
+				<Button variant="link" class="flex flex-row justify-between w-full">
+					<svelte:component this={icons[c.icon]} />
+					<span class="font-medium">{c.name}</span>
+				</Button>
+			{/each}
+		</div>
+	</ScrollArea>
 </nav>
