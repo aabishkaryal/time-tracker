@@ -2,14 +2,29 @@
 	import SideBar from '$lib/components/sideBar.svelte';
 	import Timer from '$lib/components/timer.svelte';
 	import { categoryStore, currentCategoryStore } from '$lib/store';
+	import { onMount } from 'svelte';
+	import { invoke } from '@tauri-apps/api/tauri';
 
 	import dayjs from 'dayjs';
 	import duration from 'dayjs/plugin/duration';
+	import type { Category } from '$lib/types/category';
+	import { toast } from 'svelte-sonner';
 	dayjs.extend(duration);
 
-	let categories = [{ name: 'Work', icon: 'briefcase', time: 0 }];
-	categoryStore.set(categories);
-	currentCategoryStore.set(categories[0]);
+	onMount(async () => {
+		try {
+			const categories: Category[] = await invoke('get_all_categories_command');
+			if (categories.length === 0) {
+				const defaultCategory: Category = { name: 'Default', icon: 'star', time: 0 };
+				await invoke('add_category_command', defaultCategory);
+				categories.push(defaultCategory);
+			}
+			categoryStore.set(categories);
+			currentCategoryStore.set(categories[0]);
+		} catch (err) {
+			toast.error(`error initializing application, ${err}`);
+		}
+	});
 </script>
 
 <div class="h-screen w-screen flex flex-col">

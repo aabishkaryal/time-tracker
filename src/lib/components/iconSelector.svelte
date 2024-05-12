@@ -14,7 +14,7 @@
 	}}
 	scrollAlignment="center"
 	typeahead={true}
-	required>
+	required={true}>
 	<Select.Trigger class="w-48">
 		<Select.Value placeholder="Select an icon" />
 	</Select.Trigger>

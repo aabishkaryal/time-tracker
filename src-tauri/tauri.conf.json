@@ -11,11 +11,22 @@
 	},
 	"tauri": {
 		"allowlist": {
-			"all": false
+			"all": false,
+			"fs": {
+				"all": false,
+				"createDir": true,
+				"exists": true,
+				"readFile": true,
+				"writeFile": true,
+				"scope": ["$APPDIR/**"]
+			},
+			"path": {
+				"all": true
+			}
 		},
 		"bundle": {
 			"active": true,
-			"category": "DeveloperTool",
+			"category": "Productivity",
 			"copyright": "",
 			"deb": {
 				"depends": []

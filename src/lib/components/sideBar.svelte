@@ -9,6 +9,8 @@
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { toast } from 'svelte-sonner';
 	import type { Category } from '$lib/types/category';
+	import { get } from 'svelte/store';
+	import { invoke } from '@tauri-apps/api/tauri';
 
 	let categoryName = '';
 	let categoryIcon = '';
@@ -28,11 +30,18 @@
 			toast.error(`Category with name "${categoryName}" already exists`);
 			return;
 		}
-		categoryStore.set([...$categoryStore, { name: categoryName, icon: categoryIcon, time: 0 }]);
-		toast.success(`Successfully created new category "${categoryName}"`);
-		categoryIcon = '';
-		categoryName = '';
-		toggleDialog();
+		try {
+			const currentCategories = get(categoryStore);
+			const newCategory: Category = { name: categoryName, icon: categoryIcon, time: 0 };
+			await invoke('add_category_command', newCategory);
+			categoryStore.set([...currentCategories, newCategory]);
+			toast.success(`Successfully created new category "${categoryName}"`);
+			categoryIcon = '';
+			categoryName = '';
+			toggleDialog();
+		} catch (err) {
+			toast.error(`error creating new category, ${err}`);
+		}
 	}
 
 	function toggleDialog() {
@@ -48,13 +57,11 @@
 	}
 </script>
 
-<nav class="bg-gray-100 w-64 border-r border-gray-200 p-6">
+<nav class="bg-gray-100 w-48 border-r border-gray-200 p-6">
 	<div class="flex items-center justify-between mb-6">
 		<h2 class="text-lg font-semibold">Categories</h2>
 		<Dialog.Root bind:open={dialogOpen} onOpenChange={toggleDialog} onOutsideClick={toggleDialog}>
-			<Dialog.Trigger class={buttonVariants({ variant: 'outline', size: 'sm' })}>
-				+ Add
-			</Dialog.Trigger>
+			<Dialog.Trigger class={buttonVariants({ variant: 'outline', size: 'sm' })}>+</Dialog.Trigger>
 			<Dialog.Content class="sm:max-w-[425px]">
 				<Dialog.Header>
 					<Dialog.Title>Add Category</Dialog.Title>
@@ -83,7 +90,7 @@
 	<ScrollArea>
 		<div
 			class="space-y-4 flex flex-col items-center justify-between border-t border-b border-gray-300 py-4">
-			{#each $categoryStore as c}
+			{#each $categoryStore as c (c.name + c.icon)}
 				<Button
 					variant="link"
 					class="flex flex-row justify-between w-full"

@@ -1,16 +1,50 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod db;
+mod model;
+
+use model::{Category, Timer};
+use std::{fs, path::PathBuf};
+
 use tauri::{
-    generate_context, AppHandle, Builder, CustomMenuItem, Manager, SystemTray, SystemTrayEvent,
-    SystemTrayMenu, Window, WindowEvent,
+    command, generate_context, generate_handler, AppHandle, Builder, CustomMenuItem, Manager,
+    SystemTray, SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
 };
+
+use db::{add_category, add_timer, get_all_categories, get_timers, init_db};
+
+#[command]
+fn add_category_command(app: tauri::AppHandle, name: String, icon: String) {
+    add_category(&app, &name, &icon).unwrap();
+}
+
+#[command]
+fn get_all_categories_command(app: tauri::AppHandle) -> Vec<Category> {
+    get_all_categories(&app).unwrap()
+}
+
+#[command]
+fn add_timer_command(app: tauri::AppHandle, category_name: String, start_time: i64, duration: i64) {
+    add_timer(&app, &category_name, start_time, duration).unwrap();
+}
+
+#[command]
+fn get_timers_command(app: tauri::AppHandle) -> Vec<Timer> {
+    get_timers(&app).unwrap()
+}
 
 fn main() {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit").accelerator("Cmd+Q");
     let system_tray_menu = SystemTrayMenu::new().add_item(quit);
     Builder::default()
         .system_tray(SystemTray::new().with_menu(system_tray_menu))
+        .invoke_handler(generate_handler![
+            add_category_command,
+            get_all_categories_command,
+            add_timer_command,
+            get_timers_command
+        ])
         .on_system_tray_event(|_, event| match event {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "quit" => {
@@ -27,7 +61,20 @@ fn main() {
             }
             _ => {}
         })
-        // .setup(|app| Ok(app.set_activation_policy(ActivationPolicy::Accessory)))
+        .setup(|app| {
+            // check if app_data_dir exists
+            let app_handle = app.app_handle();
+            if let Err(e) = ensure_app_data_dir_exists(&app_handle) {
+                eprint!("Failed to create app_data_dir: {}", e);
+                std::process::exit(1); // Exit if the database cannot be initialized
+            }
+            // Initialize the database
+            if let Err(e) = init_db(&app_handle) {
+                eprintln!("Failed to initialize database: {}", e);
+                std::process::exit(1); // Exit if the database cannot be initialized
+            }
+            Ok(())
+        })
         .run(generate_context!())
         .expect("error while running tauri application");
 }
@@ -41,4 +88,21 @@ fn hide_window(window: &Window) {
     {
         AppHandle::hide(&window.app_handle()).unwrap();
     }
+}
+
+/// Ensures the application data directory exists, creating it if necessary.
+fn ensure_app_data_dir_exists(app: &AppHandle) -> Result<(), std::io::Error> {
+    // Retrieve the application data directory path
+    let app_data_dir = app
+        .path_resolver()
+        .app_data_dir()
+        .unwrap_or_else(PathBuf::new);
+
+    // Check if the directory exists, and create it if it does not
+    if !app_data_dir.exists() {
+        fs::create_dir_all(&app_data_dir)?;
+    }
+
+    // Return the path of the directory
+    Ok(())
 }
