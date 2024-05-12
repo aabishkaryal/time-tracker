@@ -7,7 +7,7 @@
 	},
 	"package": {
 		"productName": "Time Tracker",
-		"version": "0.1.0"
+		"version": "1.0.0"
 	},
 	"tauri": {
 		"allowlist": {
@@ -33,9 +33,9 @@
 			},
 			"externalBin": [],
 			"icon": [
-				"icons/32x32.png",
-				"icons/128x128.png",
-				"icons/128x128@2x.png",
+				"icons/icon_32x32.png",
+				"icons/icon_128x128.png",
+				"icons/icon_128x128@2x.png",
 				"icons/icon.icns",
 				"icons/icon.ico"
 			],
@@ -76,7 +76,7 @@
 			}
 		],
 		"systemTray": {
-			"iconPath": "icons/icon.png",
+			"iconPath": "icons/icon_512x512.png",
 			"iconAsTemplate": true
 		},
 		"macOSPrivateApi": true
