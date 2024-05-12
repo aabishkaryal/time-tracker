@@ -7,7 +7,7 @@
 	import duration from 'dayjs/plugin/duration';
 	dayjs.extend(duration);
 
-	let categories = [{ name: 'Work', icon: 'briefcase', time: '00:00:00' }];
+	let categories = [{ name: 'Work', icon: 'briefcase', time: 0 }];
 	categoryStore.set(categories);
 	currentCategoryStore.set(categories[0]);
 </script>

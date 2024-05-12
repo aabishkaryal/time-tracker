@@ -9,4 +9,4 @@
 
 <ModeWatcher />
 <slot />
-<Toaster position="top-right" duration={1000} dismissible />
+<Toaster position="top-right" duration={1000} />

@@ -27,10 +27,7 @@
 			toast.error(`Category with name "${categoryName}" already exists`);
 			return;
 		}
-		categoryStore.set([
-			...$categoryStore,
-			{ name: categoryName, icon: categoryIcon, time: '00:00:00' }
-		]);
+		categoryStore.set([...$categoryStore, { name: categoryName, icon: categoryIcon, time: 0 }]);
 		toast.success(`Successfully created new category "${categoryName}"`);
 		categoryIcon = '';
 		categoryName = '';

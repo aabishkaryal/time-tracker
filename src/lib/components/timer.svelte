@@ -6,9 +6,13 @@
 	import dayjs from 'dayjs';
 	import { onDestroy } from 'svelte';
 
-	let totalTime = '00:00:00';
-
-	let currentTime = '00:00:00';
+	$: totalTime = dayjs
+		.duration(
+			$categoryStore.reduce((sum, c) => sum + c.time, 0),
+			's'
+		)
+		.format('HH:mm:ss');
+	let currentTime = dayjs.duration(0, 's');
 
 	let frame = window.requestAnimationFrame(updateTime);
 
@@ -17,6 +21,7 @@
 			toast.error('Stop running timer to start a new one.');
 		} else {
 			$currentTimeStore = { start: dayjs() };
+			currentTime = dayjs.duration(0, 's');
 		}
 	}
 
@@ -28,13 +33,27 @@
 				dismissable: true
 			});
 		} else {
+			const totalCurrentTime = currentTime
+				.add(dayjs.duration($currentCategoryStore!.time, 's'))
+				.asSeconds();
+
+			currentCategoryStore.set({
+				name: $currentCategoryStore!.name,
+				icon: $currentCategoryStore!.icon,
+				time: totalCurrentTime
+			});
 			$currentTimeStore = null;
+			let categories = $categoryStore.map((c) => Object.assign({}, c));
+			const index = categories.findIndex((c) => c.name === $currentCategoryStore?.name);
+			if (index === -1) return;
+			categories[index] = $currentCategoryStore!;
+			categoryStore.set(categories);
 		}
 	}
 
 	function updateTime() {
 		if ($currentTimeStore) {
-			currentTime = dayjs.duration(dayjs().diff($currentTimeStore.start)).format('HH:mm:ss');
+			currentTime = dayjs.duration(dayjs().diff($currentTimeStore.start, 's'), 's');
 		}
 		frame = window.requestAnimationFrame(updateTime);
 	}
@@ -46,7 +65,7 @@
 	<div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
 		<h2 class="text-2xl font-bold mb-4">{$currentCategoryStore?.name}</h2>
 		<div class="flex items-center justify-center mb-6">
-			<span class="text-6xl font-bold">{currentTime}</span>
+			<span class="text-6xl font-bold">{currentTime.format('HH:mm:ss')}</span>
 		</div>
 		<div class="flex justify-center">
 			<Button variant="link" on:click={onStart}>Start</Button>
@@ -56,10 +75,10 @@
 	<div class="mt-8 w-full max-w-md">
 		<h3 class="text-lg font-medium mb-2">Today's Summary</h3>
 		<div class="bg-white shadow-lg rounded-lg p-4">
-			{#each $categoryStore as c (c.name)}
+			{#each $categoryStore as c ((c.name, c.time))}
 				<div class="flex justify-between mb-2">
 					<span>{c.name}</span>
-					<span>{c.time}</span>
+					<span>{dayjs.duration(c.time, 's').format('HH:mm:ss')}</span>
 				</div>
 			{/each}
 			<div class="border-t border-gray-200 pt-2 flex justify-between">
