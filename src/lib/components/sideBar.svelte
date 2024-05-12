@@ -5,9 +5,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import icons from '$lib/icon';
-	import { categoryStore } from '$lib/store';
+	import { categoryStore, currentTimeStore, currentCategoryStore } from '$lib/store';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { toast } from 'svelte-sonner';
+	import type { Category } from '$lib/types/category';
 
 	let categoryName = '';
 	let categoryIcon = '';
@@ -36,6 +37,14 @@
 
 	function toggleDialog() {
 		dialogOpen = !dialogOpen;
+	}
+
+	function changeCategory(c: Category) {
+		if ($currentTimeStore !== null) {
+			toast.error('Stop current timer to switch categories');
+			return;
+		}
+		currentCategoryStore.set(c);
 	}
 </script>
 
@@ -75,7 +84,10 @@
 		<div
 			class="space-y-4 flex flex-col items-center justify-between border-t border-b border-gray-300 py-4">
 			{#each $categoryStore as c}
-				<Button variant="link" class="flex flex-row justify-between w-full">
+				<Button
+					variant="link"
+					class="flex flex-row justify-between w-full"
+					on:click={() => changeCategory(c)}>
 					<svelte:component this={icons[c.icon]} />
 					<span class="font-medium">{c.name}</span>
 				</Button>

@@ -43,6 +43,7 @@
 				time: totalCurrentTime
 			});
 			$currentTimeStore = null;
+			currentTime = dayjs.duration(0, 's');
 			let categories = $categoryStore.map((c) => Object.assign({}, c));
 			const index = categories.findIndex((c) => c.name === $currentCategoryStore?.name);
 			if (index === -1) return;
