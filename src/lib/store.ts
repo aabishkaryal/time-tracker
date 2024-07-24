@@ -1,6 +1,6 @@
+import type { Dayjs } from 'dayjs';
 import { writable } from 'svelte/store';
 import type { Category } from './types/category';
-import type { Dayjs } from 'dayjs';
 
 export const categoryStore = writable<Category[]>([]);
 

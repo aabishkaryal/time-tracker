@@ -4,13 +4,13 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import icons from '$lib/icon';
-	import { categoryStore, currentTimeStore, currentCategoryStore } from '$lib/store';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { toast } from 'svelte-sonner';
+	import icons from '$lib/icon';
+	import { categoryStore, currentCategoryStore, currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
-	import { get } from 'svelte/store';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { toast } from 'svelte-sonner';
+	import { get } from 'svelte/store';
 
 	let categoryName = '';
 	let categoryIcon = '';

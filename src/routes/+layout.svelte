@@ -1,8 +1,7 @@
 <script lang="ts">
-	import '$lib/css/app.css';
-	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from '$lib/components/ui/sonner';
-	import { setMode } from 'mode-watcher';
+	import '$lib/css/app.css';
+	import { ModeWatcher, setMode } from 'mode-watcher';
 
 	setMode('light');
 </script>

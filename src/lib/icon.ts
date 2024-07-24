@@ -1,14 +1,14 @@
 import { type IconProps } from 'lucide-svelte';
 import {
-	Briefcase,
-	Apple,
-	Anvil,
-	AppWindow,
-	Armchair,
-	Album,
-	Book,
-	Library,
-	Star
+  Album,
+  Anvil,
+  Apple,
+  AppWindow,
+  Armchair,
+  Book,
+  Briefcase,
+  Library,
+  Star
 } from 'lucide-svelte/icons';
 import type { ComponentConstructorOptions, SvelteComponent } from 'svelte';
 

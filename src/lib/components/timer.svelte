@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import icons from '$lib/icon';
-	import { toast } from 'svelte-sonner';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { toast } from 'svelte-sonner';
 
+	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 	import { categoryStore, currentCategoryStore, currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
 	import dayjs from 'dayjs';
 	import { onDestroy } from 'svelte';
-	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 
 	$: totalTime = dayjs
 		.duration(

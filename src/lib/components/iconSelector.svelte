@@ -1,6 +1,6 @@
 <script lang="js">
-	import icons from '$lib/icon';
 	import * as Select from '$lib/components/ui/select';
+	import icons from '$lib/icon';
 
 	export let icon = '';
 </script>

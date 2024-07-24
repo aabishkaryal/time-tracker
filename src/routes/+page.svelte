@@ -2,12 +2,12 @@
 	import SideBar from '$lib/components/sideBar.svelte';
 	import Timer from '$lib/components/timer.svelte';
 	import { categoryStore, currentCategoryStore } from '$lib/store';
-	import { onMount } from 'svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { onMount } from 'svelte';
 
+	import type { Category } from '$lib/types/category';
 	import dayjs from 'dayjs';
 	import duration from 'dayjs/plugin/duration';
-	import type { Category } from '$lib/types/category';
 	import { toast } from 'svelte-sonner';
 	dayjs.extend(duration);
 
