@@ -5,25 +5,20 @@
 	import { toast } from 'svelte-sonner';
 
 	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
-	import { categoryStore, currentCategoryStore, currentTimeStore } from '$lib/store';
+	import { EVENT_CATEGORY_LIST_UPDATED, EVENT_CURRENT_CATEGORY_UPDATED } from '$lib/event_names';
+	import { publish, subscribe, unsubscribe } from '$lib/events';
+	import { currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
 	import dayjs from 'dayjs';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import TimerSummary from './timerSummary.svelte';
+	import TimerToolbar from './timerToolbar.svelte';
 
-	$: totalTime = dayjs
-		.duration(
-			$categoryStore.reduce((sum, c) => sum + c.time, 0),
-			's'
-		)
-		.format('HH:mm:ss');
 	let currentTime = dayjs.duration(0, 's');
 
 	let frame = window.requestAnimationFrame(updateTime);
 
 	let currentCategory: Category;
-	let unsubcribeCurrentCategoryStore = currentCategoryStore.subscribe((category) => {
-		if (category) currentCategory = category;
-	});
 
 	function onStart() {
 		if ($currentTimeStore) {
@@ -39,34 +34,20 @@
 			toast.error('Start timer to stop it.');
 			return;
 		}
-		if (!$currentCategoryStore) {
+		if (!currentCategory) {
 			toast.error('Category must be selected to add time.');
 			return;
 		}
 		try {
 			const timer = {
-				categoryName: $currentCategoryStore.name,
+				categoryName: currentCategory.name,
 				duration: currentTime.asSeconds(),
 				startTime: $currentTimeStore.start.unix()
 			};
-			console.log(timer);
 			await invoke('add_timer_command', timer);
-			const totalCurrentTime = currentTime
-				.add(dayjs.duration($currentCategoryStore!.time, 's'))
-				.asSeconds();
-
-			currentCategoryStore.set({
-				name: $currentCategoryStore!.name,
-				icon: $currentCategoryStore!.icon,
-				time: totalCurrentTime
-			});
-			$currentTimeStore = null;
-			currentTime = dayjs.duration(0, 's');
-			let categories = $categoryStore.map((c) => Object.assign({}, c));
-			const index = categories.findIndex((c) => c.name === $currentCategoryStore?.name);
-			if (index === -1) return;
-			categories[index] = $currentCategoryStore!;
-			categoryStore.set(categories);
+			publish(EVENT_CATEGORY_LIST_UPDATED);
+			publish(EVENT_CURRENT_CATEGORY_UPDATED);
+			currentTimeStore.set(null);
 		} catch (err) {
 			toast.error(`error saving time state, ${err}`);
 		}
@@ -79,16 +60,26 @@
 		frame = window.requestAnimationFrame(updateTime);
 	}
 
+	async function refreshCurrentCategory() {
+		currentCategory = await invoke('get_current_category_command');
+	}
+
+	onMount(() => {
+		refreshCurrentCategory();
+		subscribe(EVENT_CURRENT_CATEGORY_UPDATED, refreshCurrentCategory);
+	});
+
 	onDestroy(() => {
 		window.cancelAnimationFrame(frame);
-		unsubcribeCurrentCategoryStore();
+		unsubscribe(EVENT_CURRENT_CATEGORY_UPDATED, refreshCurrentCategory);
 	});
 </script>
 
 <div class="flex-1 flex flex-col items-center justify-center">
 	{#if currentCategory}
 		<div class="bg-white shadow-lg rounded-lg p-4 w-full max-w-md">
-			<div class="flex flex-row space-x-4 justify-center items-center mb-4">
+			<TimerToolbar />
+			<div class="flex flex-row space-x-4 justify-center items-center my-4">
 				<h2 class="text-2xl font-bold">{currentCategory.name}</h2>
 				<svelte:component this={icons[currentCategory.icon]} />
 			</div>
@@ -103,19 +94,5 @@
 	{:else}
 		<Skeleton class="min-w-24 min-h-12 w-full max-w-md" />
 	{/if}
-	<div class="mt-8 w-full max-w-md">
-		<h3 class="text-lg font-medium mb-2">Today's Summary</h3>
-		<div class="bg-white shadow-lg rounded-lg p-4">
-			{#each $categoryStore as c (c.name + c.time)}
-				<div class="flex justify-between mb-2">
-					<span>{c.name}</span>
-					<span>{dayjs.duration(c.time, 's').format('HH:mm:ss')}</span>
-				</div>
-			{/each}
-			<div class="border-t border-gray-200 pt-2 flex justify-between">
-				<span class="font-medium">Total</span>
-				<span class="font-medium">{totalTime}</span>
-			</div>
-		</div>
-	</div>
+	<TimerSummary />
 </div>

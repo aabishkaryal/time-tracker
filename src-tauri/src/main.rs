@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod db;
+mod error;
 mod model;
 
 use model::{Category, Timer};
@@ -12,7 +13,10 @@ use tauri::{
     SystemTray, SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
 };
 
-use db::{add_category, add_timer, get_all_categories, get_timers, init_db};
+use db::{
+    add_category, add_timer, get_all_categories_info, get_current_category, get_timers, init_db,
+    update_current_category,
+};
 
 #[command]
 fn add_category_command(app: tauri::AppHandle, name: String, icon: String) {
@@ -20,8 +24,8 @@ fn add_category_command(app: tauri::AppHandle, name: String, icon: String) {
 }
 
 #[command]
-fn get_all_categories_command(app: tauri::AppHandle) -> Vec<Category> {
-    get_all_categories(&app).unwrap()
+fn get_all_categories_info_command(app: tauri::AppHandle) -> Vec<Category> {
+    get_all_categories_info(&app).unwrap()
 }
 
 #[command]
@@ -34,6 +38,16 @@ fn get_timers_command(app: tauri::AppHandle) -> Vec<Timer> {
     get_timers(&app).unwrap()
 }
 
+#[command]
+fn get_current_category_command(app: tauri::AppHandle) -> Option<Category> {
+    get_current_category(&app).unwrap()
+}
+
+#[command]
+fn update_current_category_command(app: tauri::AppHandle, name: String) {
+    update_current_category(&app, &name).unwrap()
+}
+
 fn main() {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit").accelerator("Cmd+Q");
     let system_tray_menu = SystemTrayMenu::new().add_item(quit);
@@ -41,9 +55,11 @@ fn main() {
         .system_tray(SystemTray::new().with_menu(system_tray_menu))
         .invoke_handler(generate_handler![
             add_category_command,
-            get_all_categories_command,
+            get_all_categories_info_command,
             add_timer_command,
-            get_timers_command
+            get_timers_command,
+            get_current_category_command,
+            update_current_category_command,
         ])
         .on_system_tray_event(|_, event| match event {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {

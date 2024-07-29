@@ -4,5 +4,6 @@
 	},
 	"[svelte]": {
 		"editor.defaultFormatter": "svelte.svelte-vscode"
-	}
+	},
+	"rust-analyzer.linkedProjects": ["./src-tauri"]
 }

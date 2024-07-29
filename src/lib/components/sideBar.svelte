@@ -5,15 +5,19 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { EVENT_CATEGORY_LIST_UPDATED, EVENT_CURRENT_CATEGORY_UPDATED } from '$lib/event_names';
+	import { publish, subscribe, unsubscribe } from '$lib/events';
 	import icons from '$lib/icon';
-	import { categoryStore, currentCategoryStore, currentTimeStore } from '$lib/store';
+	import { currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { get } from 'svelte/store';
 
 	let categoryName = '';
 	let categoryIcon = '';
+
+	let categories: Category[] = [];
 
 	let dialogOpen = false;
 
@@ -26,15 +30,18 @@
 			toast.error('Category Icon is required.');
 			return;
 		}
-		if ($categoryStore.find((c) => c.name === categoryName)) {
+		if (categoryName.length < 3 || categoryName.length > 10) {
+			toast.error('Category Name must be between 3 and 10 characters');
+			return;
+		}
+		if (categories.find((c) => c.name === categoryName)) {
 			toast.error(`Category with name "${categoryName}" already exists`);
 			return;
 		}
 		try {
-			const currentCategories = get(categoryStore);
 			const newCategory: Category = { name: categoryName, icon: categoryIcon, time: 0 };
 			await invoke('add_category_command', newCategory);
-			categoryStore.set([...currentCategories, newCategory]);
+			publish(EVENT_CATEGORY_LIST_UPDATED);
 			toast.success(`Successfully created new category "${categoryName}"`);
 			categoryIcon = '';
 			categoryName = '';
@@ -48,13 +55,27 @@
 		dialogOpen = !dialogOpen;
 	}
 
-	function changeCategory(c: Category) {
+	async function changeCategory(c: Category) {
 		if ($currentTimeStore !== null) {
 			toast.error('Stop current timer to switch categories');
 			return;
 		}
-		currentCategoryStore.set(c);
+		await invoke('update_current_category_command', { name: c.name });
+		publish(EVENT_CURRENT_CATEGORY_UPDATED);
 	}
+
+	async function refreshCategoryList() {
+		categories = await invoke('get_all_categories_info_command');
+	}
+
+	onMount(() => {
+		refreshCategoryList();
+		subscribe(EVENT_CATEGORY_LIST_UPDATED, refreshCategoryList);
+	});
+
+	onDestroy(() => {
+		unsubscribe(EVENT_CATEGORY_LIST_UPDATED, refreshCategoryList);
+	});
 </script>
 
 <nav class="bg-gray-100 w-48 border-r border-gray-200 p-6">
@@ -90,7 +111,7 @@
 	<ScrollArea>
 		<div
 			class="space-y-4 flex flex-col items-center justify-between border-t border-b border-gray-300 py-4">
-			{#each $categoryStore as c (c.name + c.icon)}
+			{#each categories as c (c.name + c.icon)}
 				<Button
 					variant="link"
 					class="flex flex-row justify-between w-full"
