@@ -16,9 +16,10 @@ use tauri::{
 };
 
 use commands::{
-    add_category_command, add_timer_command, get_active_categories_info_command,
-    get_all_categories_info_command, get_archived_categories_info_command,
-    get_current_category_command, get_timers_command, update_current_category_command,
+    add_category_command, add_timer_command, archive_category_command,
+    get_active_categories_info_command, get_all_categories_info_command,
+    get_archived_categories_info_command, get_current_category_command, get_timers_command,
+    update_current_category_command,
 };
 
 use init::init_db;
@@ -30,13 +31,14 @@ fn main() {
         .system_tray(SystemTray::new().with_menu(system_tray_menu))
         .invoke_handler(generate_handler![
             add_category_command,
-            get_all_categories_info_command,
+            archive_category_command,
             add_timer_command,
+            get_all_categories_info_command,
             get_timers_command,
             get_current_category_command,
-            update_current_category_command,
             get_active_categories_info_command,
-            get_archived_categories_info_command
+            get_archived_categories_info_command,
+            update_current_category_command,
         ])
         .on_system_tray_event(|_, event| match event {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {

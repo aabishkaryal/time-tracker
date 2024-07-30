@@ -117,3 +117,18 @@ pub fn get_timers(app: &AppHandle) -> Result<Vec<Timer>, DatabaseError> {
     let timers = timers_iter.collect::<Result<Vec<Timer>, _>>()?;
     Ok(timers)
 }
+
+pub fn archive_category(app: &AppHandle, category_name: &str) -> Result<(), DatabaseError> {
+    let mut conn = Connection::open(db_path(app))?;
+    let tx = conn.transaction()?;
+    tx.execute(
+        "UPDATE category SET current = 0 WHERE name = ?1;",
+        params![category_name],
+    )?;
+    tx.execute(
+        "UPDATE category SET archived = 1 WHERE name = ?1;",
+        params![category_name],
+    )?;
+    tx.commit()?;
+    Ok(())
+}

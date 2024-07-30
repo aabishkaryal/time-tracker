@@ -65,7 +65,7 @@
 	}
 
 	async function refreshCategoryList() {
-		categories = await invoke('get_all_categories_info_command');
+		categories = await invoke('get_active_categories_info_command');
 	}
 
 	onMount(() => {

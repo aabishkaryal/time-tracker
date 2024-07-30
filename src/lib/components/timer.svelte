@@ -75,7 +75,7 @@
 	});
 </script>
 
-<div class="flex-1 flex flex-col items-center justify-center my-6">
+<div class="flex-1 flex flex-col items-center justify-center p-4">
 	{#if currentCategory}
 		<div class="bg-white shadow-lg rounded-lg p-4 w-full max-w-md">
 			<TimerToolbar />
@@ -92,7 +92,7 @@
 			</div>
 		</div>
 	{:else}
-		<Skeleton class="min-w-24 min-h-24 w-full max-w-md" />
+		<Skeleton class="min-w-24 min-h-48 w-full max-w-md m-4" />
 	{/if}
 	<TimerSummary />
 </div>

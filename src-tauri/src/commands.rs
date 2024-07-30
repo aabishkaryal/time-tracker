@@ -1,7 +1,7 @@
 use tauri::command;
 
 use crate::db::{
-    add_category, add_timer, get_active_categories_info, get_all_categories_info,
+    add_category, add_timer, archive_category, get_active_categories_info, get_all_categories_info,
     get_archived_categories_info, get_current_category, get_timers, update_current_category,
 };
 use crate::model::{Category, Timer};
@@ -78,5 +78,13 @@ pub fn get_archived_categories_info_command(
     match get_archived_categories_info(&app) {
         Ok(categories) => Ok(categories),
         Err(e) => Err(format!("Failed to get archived categories info: {}", e)),
+    }
+}
+
+#[command]
+pub fn archive_category_command(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    match archive_category(&app, &name) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to archive category: {}", e)),
     }
 }
