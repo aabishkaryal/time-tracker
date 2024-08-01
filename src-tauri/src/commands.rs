@@ -19,8 +19,11 @@ pub fn add_category_command(
 }
 
 #[command]
-pub fn get_all_categories_info_command(app: tauri::AppHandle) -> Result<Vec<Category>, String> {
-    match get_all_categories_info(&app) {
+pub fn get_all_categories_info_command(
+    app: tauri::AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, String> {
+    match get_all_categories_info(&app, date) {
         Ok(categories) => Ok(categories),
         Err(e) => Err(format!("Failed to get all categories info: {}", e)),
     }
@@ -64,8 +67,11 @@ pub fn update_current_category_command(app: tauri::AppHandle, name: String) -> R
 }
 
 #[command]
-pub fn get_active_categories_info_command(app: tauri::AppHandle) -> Result<Vec<Category>, String> {
-    match get_active_categories_info(&app) {
+pub fn get_active_categories_info_command(
+    app: tauri::AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, String> {
+    match get_active_categories_info(&app, date) {
         Ok(categories) => Ok(categories),
         Err(e) => Err(format!("Failed to get active categories info: {}", e)),
     }
@@ -74,8 +80,9 @@ pub fn get_active_categories_info_command(app: tauri::AppHandle) -> Result<Vec<C
 #[command]
 pub fn get_archived_categories_info_command(
     app: tauri::AppHandle,
+    date: &str,
 ) -> Result<Vec<Category>, String> {
-    match get_archived_categories_info(&app) {
+    match get_archived_categories_info(&app, date) {
         Ok(categories) => Ok(categories),
         Err(e) => Err(format!("Failed to get archived categories info: {}", e)),
     }

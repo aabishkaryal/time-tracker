@@ -7,6 +7,7 @@
 	import { Archive } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import TooltipButton from './tooltipButton.svelte';
+	import dayjs from 'dayjs';
 
 	async function archiveCategory() {
 		if ($currentTimeStore) {
@@ -14,12 +15,16 @@
 			return;
 		}
 		try {
-			let categories: Category[] = await invoke('get_active_categories_info_command');
+			let categories: Category[] = await invoke('get_active_categories_info_command', {
+				date: dayjs().format('YYYY-MM-DD')
+			});
 			if (categories.length === 1) {
 				toast.error('Cannot archive last category.');
 				return;
 			}
-			let currentCategory: Category = await invoke('get_current_category_command');
+			let currentCategory: Category = await invoke('get_current_category_command', {
+				date: dayjs().format('YYYY-MM-DD')
+			});
 			await invoke('archive_category_command', { name: currentCategory.name });
 			publish(EVENT_CATEGORY_LIST_UPDATED);
 			publish(EVENT_CURRENT_CATEGORY_UPDATED);

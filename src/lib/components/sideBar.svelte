@@ -11,6 +11,7 @@
 	import { currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import dayjs from 'dayjs';
 	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -65,7 +66,9 @@
 	}
 
 	async function refreshCategoryList() {
-		categories = await invoke('get_active_categories_info_command');
+		categories = await invoke('get_active_categories_info_command', {
+			date: dayjs().format('YYYY-MM-DD')
+		});
 	}
 
 	onMount(() => {

@@ -3,12 +3,15 @@
 	import { subscribe, unsubscribe } from '$lib/events';
 	import type { Category } from '$lib/types/category';
 	import { invoke } from '@tauri-apps/api';
+	import dayjs from 'dayjs';
 	import { onDestroy, onMount } from 'svelte';
 
 	let archivedCategories: Category[] = [];
 
 	async function refreshArchivedCategories() {
-		archivedCategories = await invoke('get_archived_categories_info_command');
+		archivedCategories = await invoke('get_archived_categories_info_command', {
+			date: dayjs().format('YYYY-MM-DD')
+		});
 	}
 
 	onMount(() => {

@@ -16,12 +16,13 @@ fn map_category(row: &rusqlite::Row) -> Result<Category, rusqlite::Error> {
 fn query_categories(
     conn: &Connection,
     condition: Option<&str>,
+    date: &str,
 ) -> Result<Vec<Category>, DatabaseError> {
     let mut query = String::from(
-      "SELECT c.name, c.icon_name, IFNULL(SUM(t.duration), 0) AS total_time
+        "SELECT c.name, c.icon_name, IFNULL(SUM(t.duration), 0) AS total_time
        FROM category c
-       LEFT JOIN timer t ON c.name = t.category_name AND date('now') = date(t.start_time, 'unixepoch')",
-  );
+       LEFT JOIN timer t ON c.name = t.category_name AND date(?) = date(t.start_time, 'unixepoch')",
+    );
 
     if let Some(cond) = condition {
         query.push_str(&format!(" WHERE {}", cond));
@@ -30,7 +31,7 @@ fn query_categories(
     query.push_str(" GROUP BY c.name");
 
     let mut stmt = conn.prepare(&query)?;
-    let categories_iter = stmt.query_map([], |row| map_category(row))?;
+    let categories_iter = stmt.query_map([date], |row| map_category(row))?;
 
     // Collect the results into a Vec<Category>
     let categories: Result<Vec<Category>, _> = categories_iter.collect();
@@ -48,24 +49,33 @@ pub fn add_category(app: &AppHandle, name: &str, icon_name: &str) -> Result<(), 
     Ok(())
 }
 
-pub fn get_all_categories_info(app: &AppHandle) -> Result<Vec<Category>, DatabaseError> {
+pub fn get_all_categories_info(
+    app: &AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, DatabaseError> {
     let conn = Connection::open(db_path(app))?;
-    query_categories(&conn, None)
+    query_categories(&conn, None, date)
 }
 
-pub fn get_active_categories_info(app: &AppHandle) -> Result<Vec<Category>, DatabaseError> {
+pub fn get_active_categories_info(
+    app: &AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, DatabaseError> {
     let conn = Connection::open(db_path(app))?;
-    query_categories(&conn, Some("c.archived = 0"))
+    query_categories(&conn, Some("c.archived = 0"), date)
 }
 
-pub fn get_archived_categories_info(app: &AppHandle) -> Result<Vec<Category>, DatabaseError> {
+pub fn get_archived_categories_info(
+    app: &AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, DatabaseError> {
     let conn = Connection::open(db_path(app))?;
-    query_categories(&conn, Some("c.archived = 1"))
+    query_categories(&conn, Some("c.archived = 1"), date)
 }
 
 pub fn get_current_category(app: &AppHandle) -> Result<Option<Category>, DatabaseError> {
     let conn = Connection::open(db_path(app))?;
-    let categories = query_categories(&conn, Some("c.current = 1"))?;
+    let categories = query_categories(&conn, Some("c.current = 1"), "now")?;
     if let Some(category) = categories.into_iter().next() {
         Ok(Some(category))
     } else {

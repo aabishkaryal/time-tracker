@@ -9,7 +9,9 @@
 	let categories: Category[] = [];
 
 	async function refresh() {
-		categories = await invoke('get_all_categories_info_command');
+		categories = await invoke('get_active_categories_info_command', {
+			date: dayjs().format('YYYY-MM-DD')
+		});
 	}
 
 	onMount(() => {

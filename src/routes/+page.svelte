@@ -1,13 +1,9 @@
 <script lang="ts">
 	import SideBar from '$lib/components/sideBar.svelte';
 	import Timer from '$lib/components/timer.svelte';
-	import Header from '$lib/components/header.svelte';
 </script>
 
-<div class="h-screen w-screen flex flex-col">
-	<Header />
-	<main class="flex flex-row flex-1">
-		<SideBar />
-		<Timer />
-	</main>
-</div>
+<main class="flex flex-row flex-1">
+	<SideBar />
+	<Timer />
+</main>
