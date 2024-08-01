@@ -1,11 +1,12 @@
 <script lang="ts">
-	import Button from '$lib/components/ui/button/button.svelte';
+	import { Button, type Variant } from '$lib/components/ui/button';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	export let tooltip: string;
 	export let onClick: undefined | ((e: MouseEvent) => void) = undefined;
+	export let variant: Variant = 'outline';
 </script>
 
-<Button variant="outline" on:click={onClick}>
+<Button {variant} on:click={onClick}>
 	<Tooltip.Root>
 		<Tooltip.Trigger><slot /></Tooltip.Trigger>
 		<Tooltip.Content>

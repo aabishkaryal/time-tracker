@@ -2,9 +2,9 @@ use tauri::command;
 
 use crate::db::{
     add_category, add_timer, archive_category, get_active_categories_info, get_all_categories_info,
-    get_archived_categories_info, get_current_category, get_timers, update_current_category,
+    get_archived_categories_info, get_current_category, restore_category, update_current_category,
 };
-use crate::model::{Category, Timer};
+use crate::model::Category;
 
 #[command]
 pub fn add_category_command(
@@ -39,14 +39,6 @@ pub fn add_timer_command(
     match add_timer(&app, &category_name, start_time, duration) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Failed to add timer: {}", e)),
-    }
-}
-
-#[command]
-pub fn get_timers_command(app: tauri::AppHandle) -> Result<Vec<Timer>, String> {
-    match get_timers(&app) {
-        Ok(timers) => Ok(timers),
-        Err(e) => Err(format!("Failed to get timers: {}", e)),
     }
 }
 
@@ -93,5 +85,13 @@ pub fn archive_category_command(app: tauri::AppHandle, name: String) -> Result<(
     match archive_category(&app, &name) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Failed to archive category: {}", e)),
+    }
+}
+
+#[command]
+pub fn restore_category_command(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    match restore_category(&app, &name) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to restore category: {}", e)),
     }
 }

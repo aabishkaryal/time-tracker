@@ -61,8 +61,12 @@
 			toast.error('Stop current timer to switch categories');
 			return;
 		}
-		await invoke('update_current_category_command', { name: c.name });
-		publish(EVENT_CURRENT_CATEGORY_UPDATED);
+		try {
+			await invoke('update_current_category_command', { name: c.name });
+			publish(EVENT_CURRENT_CATEGORY_UPDATED);
+		} catch (err) {
+			toast.error(`error switching to category ${c.name}, ${err}`);
+		}
 	}
 
 	async function refreshCategoryList() {

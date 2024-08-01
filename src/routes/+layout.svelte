@@ -4,7 +4,7 @@
 	import '$lib/css/app.css';
 	import dayjs from 'dayjs';
 	import duration from 'dayjs/plugin/duration';
-	import { ModeWatcher, setMode } from 'mode-watcher';
+	import { ModeWatcher } from 'mode-watcher';
 
 	dayjs.extend(duration);
 </script>

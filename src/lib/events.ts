@@ -6,9 +6,8 @@ export function unsubscribe(eventName: string, listener: EventListenerOrEventLis
 	document.removeEventListener(eventName, listener);
 }
 
-export function publish(eventName: string, payload?: any) {
+export function publish(eventName: string) {
 	const event = new CustomEvent(eventName, {
-		detail: payload,
 		bubbles: true,
 		cancelable: true,
 		composed: false

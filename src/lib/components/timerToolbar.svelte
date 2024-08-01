@@ -4,10 +4,10 @@
 	import { currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
 	import { invoke } from '@tauri-apps/api';
+	import dayjs from 'dayjs';
 	import { Archive } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import TooltipButton from './tooltipButton.svelte';
-	import dayjs from 'dayjs';
 
 	async function archiveCategory() {
 		if ($currentTimeStore) {

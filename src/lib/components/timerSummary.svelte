@@ -2,16 +2,21 @@
 	import { EVENT_CATEGORY_LIST_UPDATED } from '$lib/event_names';
 	import { subscribe, unsubscribe } from '$lib/events';
 	import type { Category } from '$lib/types/category';
+	import { invoke } from '@tauri-apps/api/tauri';
 	import dayjs from 'dayjs';
 	import { onDestroy, onMount } from 'svelte';
-	import { invoke } from '@tauri-apps/api/tauri';
+	import { toast } from 'svelte-sonner';
 
 	let categories: Category[] = [];
 
 	async function refresh() {
-		categories = await invoke('get_active_categories_info_command', {
-			date: dayjs().format('YYYY-MM-DD')
-		});
+		try {
+			categories = await invoke('get_active_categories_info_command', {
+				date: dayjs().format('YYYY-MM-DD')
+			});
+		} catch (err) {
+			toast.error(`error fetching active categories ${err}`);
+		}
 	}
 
 	onMount(() => {

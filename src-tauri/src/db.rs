@@ -2,7 +2,7 @@ use rusqlite::{params, Connection, Result};
 use tauri::AppHandle;
 
 use crate::error::DatabaseError;
-use crate::model::{Category, Timer};
+use crate::model::Category;
 use crate::utils::db_path;
 
 fn map_category(row: &rusqlite::Row) -> Result<Category, rusqlite::Error> {
@@ -111,23 +111,6 @@ pub fn add_timer(
     Ok(())
 }
 
-pub fn get_timers(app: &AppHandle) -> Result<Vec<Timer>, DatabaseError> {
-    let conn = Connection::open(db_path(app))?;
-    let mut stmt = conn.prepare(
-        "SELECT category_name, start_time, duration FROM timer WHERE date('now') = date(start_time, 'unixepoch')",
-    )?;
-    let timers_iter = stmt.query_map([], |row| {
-        Ok(Timer {
-            category_name: row.get(0)?,
-            start_time: row.get(1)?,
-            duration: row.get(2)?,
-        })
-    })?;
-
-    let timers = timers_iter.collect::<Result<Vec<Timer>, _>>()?;
-    Ok(timers)
-}
-
 pub fn archive_category(app: &AppHandle, category_name: &str) -> Result<(), DatabaseError> {
     let mut conn = Connection::open(db_path(app))?;
     let tx = conn.transaction()?;
@@ -140,5 +123,14 @@ pub fn archive_category(app: &AppHandle, category_name: &str) -> Result<(), Data
         params![category_name],
     )?;
     tx.commit()?;
+    Ok(())
+}
+
+pub fn restore_category(app: &AppHandle, category_name: &str) -> Result<(), DatabaseError> {
+    let conn = Connection::open(db_path(app))?;
+    conn.execute(
+        "UPDATE category SET archived = 0 WHERE name = ?1",
+        params![category_name],
+    )?;
     Ok(())
 }
