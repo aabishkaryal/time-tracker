@@ -9,6 +9,7 @@
 	import { publish, subscribe, unsubscribe } from '$lib/events';
 	import { currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
+	import type { Timer } from '$lib/types/timer';
 	import dayjs from 'dayjs';
 	import { onDestroy, onMount } from 'svelte';
 	import TimerSummary from './timerSummary.svelte';
@@ -39,8 +40,8 @@
 			return;
 		}
 		try {
-			const timer = {
-				categoryName: currentCategory.name,
+			const timer: Timer = {
+				categoryUuid: currentCategory.uuid,
 				duration: currentTime.asSeconds(),
 				startTime: $currentTimeStore.start.unix()
 			};

@@ -14,4 +14,4 @@
 	<Header />
 	<slot />
 </div>
-<Toaster position="top-right" duration={1000} />
+<Toaster position="top-right" duration={2000} />

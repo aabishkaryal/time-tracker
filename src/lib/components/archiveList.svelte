@@ -1,5 +1,4 @@
 <script lang="ts">
-	import * as Pagination from '$lib/components/ui/pagination';
 	import * as Table from '$lib/components/ui/table';
 	import { EVENT_CATEGORY_LIST_UPDATED } from '$lib/event_names';
 	import { publish, subscribe, unsubscribe } from '$lib/events';
@@ -8,8 +7,8 @@
 	import dayjs from 'dayjs';
 	import { ShieldPlus } from 'lucide-svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import TooltipButton from './tooltipButton.svelte';
 	import { toast } from 'svelte-sonner';
+	import TooltipButton from './tooltipButton.svelte';
 
 	let archivedCategories: Category[] = [];
 
@@ -23,9 +22,9 @@
 		}
 	}
 
-	async function restoreCategory(name: string) {
+	async function restoreCategory(uuid: string) {
 		try {
-			await invoke('restore_category_command', { name });
+			await invoke('restore_category_command', { uuid });
 			publish(EVENT_CATEGORY_LIST_UPDATED);
 		} catch (err) {
 			toast.error(`error restoring category ${err}`);
@@ -52,7 +51,7 @@
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			{#each archivedCategories as category, index}
+			{#each archivedCategories as category, index (category.uuid)}
 				<Table.Row>
 					<Table.Cell>{index + 1}</Table.Cell>
 					<Table.Cell>{category.name}</Table.Cell>
@@ -60,7 +59,7 @@
 						<TooltipButton
 							tooltip="Restore Category"
 							variant="secondary"
-							onClick={() => restoreCategory(category.name)}>
+							onClick={() => restoreCategory(category.uuid)}>
 							<ShieldPlus class="h-4 w-4" />
 						</TooltipButton>
 					</Table.Cell>
@@ -68,29 +67,4 @@
 			{/each}
 		</Table.Body>
 	</Table.Root>
-	{#if archivedCategories.length > 10}
-		<Pagination.Root count={archivedCategories.length} perPage={10} let:pages let:currentPage>
-			<Pagination.Content>
-				<Pagination.Item>
-					<Pagination.PrevButton />
-				</Pagination.Item>
-				{#each pages as page (page.key)}
-					{#if page.type === 'ellipsis'}
-						<Pagination.Item>
-							<Pagination.Ellipsis />
-						</Pagination.Item>
-					{:else}
-						<Pagination.Item hidden={currentPage == page.value}>
-							<Pagination.Link {page} isActive={currentPage == page.value}>
-								{page.value}
-							</Pagination.Link>
-						</Pagination.Item>
-					{/if}
-				{/each}
-				<Pagination.Item>
-					<Pagination.NextButton />
-				</Pagination.Item>
-			</Pagination.Content>
-		</Pagination.Root>
-	{/if}
 </div>

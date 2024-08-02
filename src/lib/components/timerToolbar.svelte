@@ -25,7 +25,7 @@
 			let currentCategory: Category = await invoke('get_current_category_command', {
 				date: dayjs().format('YYYY-MM-DD')
 			});
-			await invoke('archive_category_command', { name: currentCategory.name });
+			await invoke('archive_category_command', { uuid: currentCategory.uuid });
 			publish(EVENT_CATEGORY_LIST_UPDATED);
 			publish(EVENT_CURRENT_CATEGORY_UPDATED);
 		} catch (err) {

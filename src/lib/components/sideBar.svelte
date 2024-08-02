@@ -40,8 +40,7 @@
 			return;
 		}
 		try {
-			const newCategory: Category = { name: categoryName, icon: categoryIcon, time: 0 };
-			await invoke('add_category_command', newCategory);
+			await invoke('add_category_command', { name: categoryName, icon: categoryIcon });
 			publish(EVENT_CATEGORY_LIST_UPDATED);
 			toast.success(`Successfully created new category "${categoryName}"`);
 			categoryIcon = '';
@@ -56,16 +55,16 @@
 		dialogOpen = !dialogOpen;
 	}
 
-	async function changeCategory(c: Category) {
+	async function changeCategory(uuid: string) {
 		if ($currentTimeStore !== null) {
 			toast.error('Stop current timer to switch categories');
 			return;
 		}
 		try {
-			await invoke('update_current_category_command', { name: c.name });
+			await invoke('update_current_category_command', { uuid });
 			publish(EVENT_CURRENT_CATEGORY_UPDATED);
 		} catch (err) {
-			toast.error(`error switching to category ${c.name}, ${err}`);
+			toast.error(`error switching to category ${uuid}, ${err}`);
 		}
 	}
 
@@ -118,11 +117,11 @@
 	<ScrollArea>
 		<div
 			class="space-y-4 flex flex-col items-center justify-between border-t border-b border-gray-300 py-4">
-			{#each categories as c (c.name + c.icon)}
+			{#each categories as c (c.uuid)}
 				<Button
 					variant="link"
 					class="flex flex-row justify-between w-full"
-					on:click={() => changeCategory(c)}>
+					on:click={() => changeCategory(c.uuid)}>
 					<svelte:component this={icons[c.icon]} />
 					<span class="font-medium">{c.name}</span>
 				</Button>
