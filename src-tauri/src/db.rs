@@ -1,127 +1,140 @@
 use rusqlite::{params, Connection, Result};
-use std::path::PathBuf;
 use tauri::AppHandle;
 
-use crate::model::{Category, Timer};
+use crate::error::DatabaseError;
+use crate::model::Category;
+use crate::utils::db_path;
 
-pub fn db_path(app: &AppHandle) -> PathBuf {
-    app.path_resolver()
-        .app_data_dir()
-        .unwrap_or_else(|| PathBuf::new())
-        .join("app.db")
+fn map_category(row: &rusqlite::Row) -> Result<Category, rusqlite::Error> {
+    Ok(Category {
+        uuid: row.get(0)?,
+        name: row.get(1)?,
+        icon: row.get(2)?,
+        archived: row.get::<_, i64>(3)? != 0,
+        current: row.get::<_, i64>(4)? != 0,
+        time: row.get(5)?,
+    })
 }
 
-pub fn init_db(app: &AppHandle) -> Result<(), rusqlite::Error> {
-    let conn = Connection::open(db_path(app))?;
+fn query_categories(
+    conn: &Connection,
+    condition: Option<&str>,
+    date: &str,
+) -> Result<Vec<Category>, DatabaseError> {
+    let mut query = String::from(
+      "SELECT c.uuid, c.name, c.icon_name, c.archived, c.current, IFNULL(SUM(t.duration), 0) AS total_time
+      FROM category c
+      LEFT JOIN timer t ON c.uuid = t.category_uuid AND date(?) = date(t.start_time, 'unixepoch')",
+  );
 
-    // Create the category table
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS category (
-            name TEXT PRIMARY KEY,
-            icon_name TEXT NOT NULL
-        )",
-        [],
-    )?;
+    if let Some(cond) = condition {
+        query.push_str(&format!(" WHERE {}", cond));
+    }
 
-    // Create the timer table
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS timer (
-            category_name TEXT NOT NULL,
-            start_time INTEGER NOT NULL,
-            duration INTEGER NOT NULL,
-            FOREIGN KEY (category_name) REFERENCES category(name)
-        )",
-        [],
-    )?;
+    query.push_str(" GROUP BY c.uuid");
 
-    // Create the version table if it doesn't exist
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS version (
-              id INTEGER PRIMARY KEY,
-              version TEXT NOT NULL
-          )",
-        [],
-    )?;
+    let mut stmt = conn.prepare(&query)?;
+    let categories_iter = stmt.query_map([date], |row| map_category(row))?;
 
-    // Insert the initial version if not set
-    conn.execute(
-          "INSERT INTO version (id, version) SELECT 1, '1.0' WHERE NOT EXISTS (SELECT 1 FROM version WHERE id = 1)",
-          [],
-      )?;
+    // Collect the results into a Vec<Category>
+    let categories: Result<Vec<Category>, _> = categories_iter.collect();
+    let categories = categories?; // Convert to DatabaseError if needed
 
-    check_and_update_db_schema(app)?;
-    Ok(())
+    Ok(categories)
 }
 
-pub fn add_category(app: &AppHandle, name: &str, icon_name: &str) -> Result<()> {
+pub fn add_category(app: &AppHandle, name: &str, icon_name: &str) -> Result<(), DatabaseError> {
     let conn = Connection::open(db_path(app))?;
+    let uuid = uuidv7::create();
     conn.execute(
-        "INSERT INTO category (name, icon_name) VALUES (?1, ?2)",
-        params![name, icon_name],
+        "INSERT INTO category (uuid, name, icon_name) VALUES (?1, ?2, ?3)",
+        params![uuid, name, icon_name],
     )?;
     Ok(())
 }
 
-pub fn get_all_categories(app: &AppHandle) -> Result<Vec<Category>, rusqlite::Error> {
+pub fn get_all_categories_info(
+    app: &AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, DatabaseError> {
     let conn = Connection::open(db_path(app))?;
-    let mut stmt = conn.prepare(
-      "SELECT c.name, c.icon_name, IFNULL(SUM(t.duration), 0) AS total_time
-       FROM category c
-       LEFT JOIN timer t ON c.name = t.category_name AND date('now') = date(t.start_time, 'unixepoch')
-       GROUP BY c.name",
-  )?;
-
-    let categories = stmt
-        .query_map((), |row| {
-            Ok(Category {
-                name: row.get(0)?,
-                icon: row.get(1)?,
-                time: row.get(2)?,
-            })
-        })?
-        .collect();
-
-    categories
+    query_categories(&conn, None, date)
 }
 
-pub fn check_and_update_db_schema(app: &AppHandle) -> Result<(), rusqlite::Error> {
+pub fn get_active_categories_info(
+    app: &AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, DatabaseError> {
     let conn = Connection::open(db_path(app))?;
-    let mut stmt = conn.prepare("SELECT version FROM version WHERE id = 1")?;
-    let _db_version: String = stmt.query_row([], |row| row.get(0))?;
+    query_categories(&conn, Some("c.archived = 0"), date)
+}
 
-    // if db_version != "1.0" { // Assume "1.0" is your current app version
-    // }
+pub fn get_archived_categories_info(
+    app: &AppHandle,
+    date: &str,
+) -> Result<Vec<Category>, DatabaseError> {
+    let conn = Connection::open(db_path(app))?;
+    query_categories(&conn, Some("c.archived = 1"), date)
+}
 
+pub fn get_current_category(app: &AppHandle) -> Result<Option<Category>, DatabaseError> {
+    let conn = Connection::open(db_path(app))?;
+    let categories = query_categories(&conn, Some("c.current = 1"), "now")?;
+    if let Some(category) = categories.into_iter().next() {
+        Ok(Some(category))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn update_current_category(app: &AppHandle, category_uuid: &str) -> Result<(), DatabaseError> {
+    let mut conn = Connection::open(db_path(app))?;
+    let tx = conn.transaction()?;
+
+    tx.execute("UPDATE category SET current = 0;", [])?;
+    tx.execute(
+        "UPDATE category SET current = 1 WHERE uuid = ?1;",
+        params![category_uuid],
+    )?;
+
+    tx.commit()?;
     Ok(())
 }
 
 pub fn add_timer(
     app: &AppHandle,
-    category_name: &str,
+    category_uuid: &str,
     start_time: i64,
     duration: i64,
-) -> Result<(), rusqlite::Error> {
+) -> Result<(), DatabaseError> {
     let conn = Connection::open(db_path(app))?;
     conn.execute(
-        "INSERT INTO timer (category_name, start_time, duration) VALUES (?1, ?2, ?3)",
-        params![category_name, start_time, duration],
+        "INSERT INTO timer (category_uuid, start_time, duration) VALUES (?1, ?2, ?3)",
+        params![category_uuid, start_time, duration],
     )?;
     Ok(())
 }
 
-pub fn get_timers(app: &AppHandle) -> Result<Vec<Timer>, rusqlite::Error> {
-    let conn = Connection::open(db_path(app))?;
-    let mut stmt = conn.prepare(
-        "SELECT category_name, start_time, duration FROM timer WHERE date('now') = date(start_time, 'unixepoch')",
+pub fn archive_category(app: &AppHandle, category_uuid: &str) -> Result<(), DatabaseError> {
+    let mut conn = Connection::open(db_path(app))?;
+    let tx = conn.transaction()?;
+    tx.execute(
+        "UPDATE category SET current = 0 WHERE uuid = ?1;",
+        params![category_uuid],
     )?;
-    let timers = stmt
-        .query_map([], |row| {
-            Ok(Timer {
-                category_name: row.get(0)?,
-                start_time: row.get(1)?,
-                duration: row.get(2)?,
-            })
-        })?
-        .collect();
-    timers
+    tx.execute(
+        "UPDATE category SET archived = 1 WHERE uuid = ?1;",
+        params![category_uuid],
+    )?;
+    tx.commit()?;
+    Ok(())
+}
+
+pub fn restore_category(app: &AppHandle, category_uuid: &str) -> Result<(), DatabaseError> {
+    let conn = Connection::open(db_path(app))?;
+    conn.execute(
+        "UPDATE category SET archived = 0 WHERE uuid = ?1",
+        params![category_uuid],
+    )?;
+    Ok(())
 }

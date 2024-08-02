@@ -5,15 +5,20 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { EVENT_CATEGORY_LIST_UPDATED, EVENT_CURRENT_CATEGORY_UPDATED } from '$lib/event_names';
+	import { publish, subscribe, unsubscribe } from '$lib/events';
 	import icons from '$lib/icon';
-	import { categoryStore, currentCategoryStore, currentTimeStore } from '$lib/store';
+	import { currentTimeStore } from '$lib/store';
 	import type { Category } from '$lib/types/category';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import dayjs from 'dayjs';
+	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { get } from 'svelte/store';
 
 	let categoryName = '';
 	let categoryIcon = '';
+
+	let categories: Category[] = [];
 
 	let dialogOpen = false;
 
@@ -26,15 +31,17 @@
 			toast.error('Category Icon is required.');
 			return;
 		}
-		if ($categoryStore.find((c) => c.name === categoryName)) {
+		if (categoryName.length < 3 || categoryName.length > 10) {
+			toast.error('Category Name must be between 3 and 10 characters');
+			return;
+		}
+		if (categories.find((c) => c.name === categoryName)) {
 			toast.error(`Category with name "${categoryName}" already exists`);
 			return;
 		}
 		try {
-			const currentCategories = get(categoryStore);
-			const newCategory: Category = { name: categoryName, icon: categoryIcon, time: 0 };
-			await invoke('add_category_command', newCategory);
-			categoryStore.set([...currentCategories, newCategory]);
+			await invoke('add_category_command', { name: categoryName, icon: categoryIcon });
+			publish(EVENT_CATEGORY_LIST_UPDATED);
 			toast.success(`Successfully created new category "${categoryName}"`);
 			categoryIcon = '';
 			categoryName = '';
@@ -48,13 +55,33 @@
 		dialogOpen = !dialogOpen;
 	}
 
-	function changeCategory(c: Category) {
+	async function changeCategory(uuid: string) {
 		if ($currentTimeStore !== null) {
 			toast.error('Stop current timer to switch categories');
 			return;
 		}
-		currentCategoryStore.set(c);
+		try {
+			await invoke('update_current_category_command', { uuid });
+			publish(EVENT_CURRENT_CATEGORY_UPDATED);
+		} catch (err) {
+			toast.error(`error switching to category ${uuid}, ${err}`);
+		}
 	}
+
+	async function refreshCategoryList() {
+		categories = await invoke('get_active_categories_info_command', {
+			date: dayjs().format('YYYY-MM-DD')
+		});
+	}
+
+	onMount(() => {
+		refreshCategoryList();
+		subscribe(EVENT_CATEGORY_LIST_UPDATED, refreshCategoryList);
+	});
+
+	onDestroy(() => {
+		unsubscribe(EVENT_CATEGORY_LIST_UPDATED, refreshCategoryList);
+	});
 </script>
 
 <nav class="bg-gray-100 w-48 border-r border-gray-200 p-6">
@@ -90,11 +117,11 @@
 	<ScrollArea>
 		<div
 			class="space-y-4 flex flex-col items-center justify-between border-t border-b border-gray-300 py-4">
-			{#each $categoryStore as c (c.name + c.icon)}
+			{#each categories as c (c.uuid)}
 				<Button
 					variant="link"
 					class="flex flex-row justify-between w-full"
-					on:click={() => changeCategory(c)}>
+					on:click={() => changeCategory(c.uuid)}>
 					<svelte:component this={icons[c.icon]} />
 					<span class="font-medium">{c.name}</span>
 				</Button>

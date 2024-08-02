@@ -1,38 +1,28 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod commands;
 mod db;
+mod error;
+mod init;
 mod model;
+mod utils;
 
-use model::{Category, Timer};
 use std::{fs, path::PathBuf};
 
 use tauri::{
-    command, generate_context, generate_handler, AppHandle, Builder, CustomMenuItem, Manager,
-    SystemTray, SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
+    generate_context, generate_handler, AppHandle, Builder, CustomMenuItem, Manager, SystemTray,
+    SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
 };
 
-use db::{add_category, add_timer, get_all_categories, get_timers, init_db};
+use commands::{
+    add_category_command, add_timer_command, archive_category_command,
+    get_active_categories_info_command, get_all_categories_info_command,
+    get_archived_categories_info_command, get_current_category_command, restore_category_command,
+    update_current_category_command,
+};
 
-#[command]
-fn add_category_command(app: tauri::AppHandle, name: String, icon: String) {
-    add_category(&app, &name, &icon).unwrap();
-}
-
-#[command]
-fn get_all_categories_command(app: tauri::AppHandle) -> Vec<Category> {
-    get_all_categories(&app).unwrap()
-}
-
-#[command]
-fn add_timer_command(app: tauri::AppHandle, category_name: String, start_time: i64, duration: i64) {
-    add_timer(&app, &category_name, start_time, duration).unwrap();
-}
-
-#[command]
-fn get_timers_command(app: tauri::AppHandle) -> Vec<Timer> {
-    get_timers(&app).unwrap()
-}
+use init::init_db;
 
 fn main() {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit").accelerator("Cmd+Q");
@@ -41,9 +31,14 @@ fn main() {
         .system_tray(SystemTray::new().with_menu(system_tray_menu))
         .invoke_handler(generate_handler![
             add_category_command,
-            get_all_categories_command,
+            archive_category_command,
             add_timer_command,
-            get_timers_command
+            get_all_categories_info_command,
+            get_current_category_command,
+            get_active_categories_info_command,
+            get_archived_categories_info_command,
+            restore_category_command,
+            update_current_category_command,
         ])
         .on_system_tray_event(|_, event| match event {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
