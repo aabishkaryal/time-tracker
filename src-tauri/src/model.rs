@@ -6,6 +6,8 @@ pub struct Category {
     pub name: String,
     pub icon: String,
     pub time: i64,
+    pub archived: bool,
+    pub current: bool,
 }
 
 #[derive(Serialize, Deserialize)]

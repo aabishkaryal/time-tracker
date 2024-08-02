@@ -10,7 +10,9 @@ fn map_category(row: &rusqlite::Row) -> Result<Category, rusqlite::Error> {
         uuid: row.get(0)?,
         name: row.get(1)?,
         icon: row.get(2)?,
-        time: row.get(3)?,
+        archived: row.get::<_, i64>(3)? != 0,
+        current: row.get::<_, i64>(4)? != 0,
+        time: row.get(5)?,
     })
 }
 
@@ -20,16 +22,16 @@ fn query_categories(
     date: &str,
 ) -> Result<Vec<Category>, DatabaseError> {
     let mut query = String::from(
-        "SELECT c.uuid, c.name, c.icon_name, IFNULL(SUM(t.duration), 0) AS total_time
-       FROM category c
-       LEFT JOIN timer t ON c.uuid = t.category_uuid AND date(?) = date(t.start_time, 'unixepoch')",
-    );
+      "SELECT c.uuid, c.name, c.icon_name, c.archived, c.current, IFNULL(SUM(t.duration), 0) AS total_time
+      FROM category c
+      LEFT JOIN timer t ON c.uuid = t.category_uuid AND date(?) = date(t.start_time, 'unixepoch')",
+  );
 
     if let Some(cond) = condition {
         query.push_str(&format!(" WHERE {}", cond));
     }
 
-    query.push_str(" GROUP BY c.name");
+    query.push_str(" GROUP BY c.uuid");
 
     let mut stmt = conn.prepare(&query)?;
     let categories_iter = stmt.query_map([date], |row| map_category(row))?;
@@ -45,7 +47,7 @@ pub fn add_category(app: &AppHandle, name: &str, icon_name: &str) -> Result<(), 
     let conn = Connection::open(db_path(app))?;
     let uuid = uuidv7::create();
     conn.execute(
-        "INSERT INTO category (uuid, name, icon_name) VALUES (?1, ?2)",
+        "INSERT INTO category (uuid, name, icon_name) VALUES (?1, ?2, ?3)",
         params![uuid, name, icon_name],
     )?;
     Ok(())

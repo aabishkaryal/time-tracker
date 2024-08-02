@@ -20,6 +20,7 @@
 	let frame = window.requestAnimationFrame(updateTime);
 
 	let currentCategory: Category;
+	let categories: Category[] = [];
 
 	function onStart() {
 		if ($currentTimeStore) {
@@ -65,14 +66,28 @@
 		currentCategory = await invoke('get_current_category_command');
 	}
 
+	async function refreshActiveCategory() {
+		try {
+			categories = await invoke('get_active_categories_info_command', {
+				date: dayjs().format('YYYY-MM-DD')
+			});
+			console.log({ categories });
+		} catch (err) {
+			toast.error(`error fetching active categories ${err}`);
+		}
+	}
+
 	onMount(() => {
 		refreshCurrentCategory();
+		refreshActiveCategory();
+		subscribe(EVENT_CATEGORY_LIST_UPDATED, refreshActiveCategory);
 		subscribe(EVENT_CURRENT_CATEGORY_UPDATED, refreshCurrentCategory);
 	});
 
 	onDestroy(() => {
 		window.cancelAnimationFrame(frame);
 		unsubscribe(EVENT_CURRENT_CATEGORY_UPDATED, refreshCurrentCategory);
+		unsubscribe(EVENT_CATEGORY_LIST_UPDATED, refreshActiveCategory);
 	});
 </script>
 
@@ -95,5 +110,7 @@
 	{:else}
 		<Skeleton class="min-w-24 min-h-48 w-full max-w-md m-4" />
 	{/if}
-	<TimerSummary />
+	<TimerSummary {categories}>
+		<h3 slot="title" class="text-lg font-medium mb-2">Today's Summary</h3>
+	</TimerSummary>
 </div>
