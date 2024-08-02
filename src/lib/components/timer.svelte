@@ -66,12 +66,11 @@
 		currentCategory = await invoke('get_current_category_command');
 	}
 
-	async function refreshActiveCategory() {
+	async function refreshActiveCategoryList() {
 		try {
 			categories = await invoke('get_active_categories_info_command', {
 				date: dayjs().format('YYYY-MM-DD')
 			});
-			console.log({ categories });
 		} catch (err) {
 			toast.error(`error fetching active categories ${err}`);
 		}
@@ -79,15 +78,15 @@
 
 	onMount(() => {
 		refreshCurrentCategory();
-		refreshActiveCategory();
-		subscribe(EVENT_CATEGORY_LIST_UPDATED, refreshActiveCategory);
+		refreshActiveCategoryList();
+		subscribe(EVENT_CATEGORY_LIST_UPDATED, refreshActiveCategoryList);
 		subscribe(EVENT_CURRENT_CATEGORY_UPDATED, refreshCurrentCategory);
 	});
 
 	onDestroy(() => {
 		window.cancelAnimationFrame(frame);
 		unsubscribe(EVENT_CURRENT_CATEGORY_UPDATED, refreshCurrentCategory);
-		unsubscribe(EVENT_CATEGORY_LIST_UPDATED, refreshActiveCategory);
+		unsubscribe(EVENT_CATEGORY_LIST_UPDATED, refreshActiveCategoryList);
 	});
 </script>
 
