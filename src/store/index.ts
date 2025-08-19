@@ -28,7 +28,7 @@ interface TimerStore {
   
   // Activity actions
   createActivity: (name: string) => void;
-  selectActivity: (activity: Activity) => void;
+  selectActivity: (activity: Activity | null) => void;
   deleteActivity: (id: string) => void;
 }
 
@@ -102,7 +102,7 @@ export const useTimerStore = create<TimerStore>()(
         }));
       },
       
-      selectActivity: (activity: Activity) => {
+      selectActivity: (activity: Activity | null) => {
         set({ currentActivity: activity });
       },
       

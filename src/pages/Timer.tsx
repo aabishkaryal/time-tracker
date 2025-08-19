@@ -1,5 +1,6 @@
 import { Pause, Play, RotateCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { playNotificationSound } from "../lib/notifications";
 import { useTimerStore } from "../store";
 
 export default function Timer() {
@@ -72,6 +73,20 @@ export default function Timer() {
     return () => clearInterval(interval);
   }, [isRunning, tick]);
 
+  // Track previous time remaining to detect completion
+  const prevTimeRemainingRef = useRef<number>(timeRemaining);
+
+
+  // Detect timer completion and play notification
+  useEffect(() => {
+    // Timer just completed (went from >0 to 0)
+    if (prevTimeRemainingRef.current > 0 && timeRemaining === 0) {
+      playNotificationSound();
+    }
+
+    prevTimeRemainingRef.current = timeRemaining;
+  }, [timeRemaining]);
+
   const { minutes, seconds } = formatTime(timeRemaining);
   const progress = getProgress();
   const timerState = getTimerState();
@@ -92,24 +107,24 @@ export default function Timer() {
   };
 
   const handleActivitySave = () => {
-    if (editingActivityName.trim()) {
-      if (
-        currentActivity &&
-        editingActivityName.trim() === currentActivity.name
-      ) {
+    const trimmedName = editingActivityName.trim();
+    
+    if (trimmedName) {
+      if (currentActivity && trimmedName === currentActivity.name) {
         // No change, just exit edit mode
         setIsEditingActivity(false);
         return;
       }
       // Check if activity exists
-      const existingActivity = activities.find(
-        (a) => a.name === editingActivityName.trim()
-      );
+      const existingActivity = activities.find((a) => a.name === trimmedName);
       if (existingActivity) {
         selectActivity(existingActivity);
       } else {
-        createActivity(editingActivityName.trim());
+        createActivity(trimmedName);
       }
+    } else {
+      // If cleared, remove current activity (will show "Unnamed Activity")
+      selectActivity(null);
     }
     setIsEditingActivity(false);
   };
@@ -375,13 +390,15 @@ export default function Timer() {
 
         {/* Timer completion message */}
         {timeRemaining === 0 && (
-          <div className="mt-8 p-6 bg-gradient-to-r from-purple-100 to-blue-100 border border-purple-200 rounded-xl text-center animate-pulse">
-            <h3 className="text-xl font-bold text-purple-800 mb-2">
+          <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg text-center">
+            <p className="text-green-800 font-bold text-xl">
               🎉 Session Complete!
-            </h3>
-            <p className="text-purple-600">
-              Great job! Take a break before starting your next session.
             </p>
+            {currentActivity?.name && (
+              <p className="text-green-700 text-base mt-1">
+                Great work on "{currentActivity.name}"
+              </p>
+            )}
           </div>
         )}
       </div>
