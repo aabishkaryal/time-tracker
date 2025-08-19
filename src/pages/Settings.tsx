@@ -14,6 +14,7 @@ import {
   Trash2,
   Volume2,
   VolumeX,
+  Square,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/ui/button";
@@ -31,19 +32,23 @@ import { Switch } from "../components/ui/switch";
 import {
   getNotificationPermission,
   requestNotificationPermission,
+  stopNotificationSound,
 } from "../lib/notifications";
 import { useTimerStore } from "../store";
+import { toast } from "sonner";
 
 export default function Settings() {
   const {
     settings,
     activities,
+    sessions,
     updateSettings,
     resetSettings,
     testNotification,
     deleteActivity,
     editActivity,
     clearAllActivities,
+    clearAllSessions,
   } = useTimerStore();
 
   const [editingActivity, setEditingActivity] = useState<string | null>(null);
@@ -116,6 +121,42 @@ export default function Settings() {
   const handleClearActivities = () => {
     clearAllActivities();
     setShowClearActivitiesConfirm(false);
+  };
+
+  const handleCustomAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File size must be less than 2MB");
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      toast.error("Please select a valid audio file");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const audioDataUrl = e.target?.result as string;
+      updateSettings({
+        customAudioFile: audioDataUrl,
+        customAudioName: file.name,
+      });
+      toast.success(`Custom audio "${file.name}" uploaded successfully!`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveCustomAudio = () => {
+    updateSettings({
+      customAudioFile: null,
+      customAudioName: null,
+      soundType: "bell", // Reset to default
+    });
   };
 
   return (
@@ -256,14 +297,103 @@ export default function Settings() {
                 </RadioGroup>
               </div>
 
-              <Button
-                onClick={handleTestNotification}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <TestTube className="w-4 h-4" />
-                Test Notification
-              </Button>
+              {/* Sound Type Selection - Only show when sound notification is selected */}
+              {settings.notificationType === "sound" && (
+                <div className="space-y-3 p-3 bg-accent/50 rounded-md">
+                  <Label>Sound Type</Label>
+                  <RadioGroup
+                    value={settings.soundType}
+                    onValueChange={(value: "bell" | "chime" | "gentle" | "digital" | "custom") =>
+                      handleSettingChange("soundType", value)
+                    }
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="bell" id="bell" />
+                      <Label htmlFor="bell" className="cursor-pointer">
+                        🔔 Bell (Default)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="chime" id="chime" />
+                      <Label htmlFor="chime" className="cursor-pointer">
+                        🎵 Chime
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="gentle" id="gentle" />
+                      <Label htmlFor="gentle" className="cursor-pointer">
+                        🌸 Gentle
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="digital" id="digital" />
+                      <Label htmlFor="digital" className="cursor-pointer">
+                        💾 Digital Beep
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="custom" id="custom" />
+                      <Label htmlFor="custom" className="cursor-pointer">
+                        📁 Custom Audio File
+                      </Label>
+                    </div>
+                  </RadioGroup>
+
+                  {/* Custom Audio File Upload */}
+                  {settings.soundType === "custom" && (
+                    <div className="mt-3 p-3 bg-background/50 border rounded-md space-y-3">
+                      <Label>Upload Audio File</Label>
+                      <div className="space-y-2">
+                        <Input
+                          type="file"
+                          accept="audio/*"
+                          onChange={handleCustomAudioUpload}
+                          className="cursor-pointer"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Supported formats: MP3, WAV, OGG, M4A (max 2MB)
+                        </p>
+                        {settings.customAudioName && (
+                          <div className="flex items-center justify-between p-2 bg-accent/30 rounded text-sm">
+                            <span>📄 {settings.customAudioName}</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleRemoveCustomAudio}
+                              className="h-6 px-2 text-destructive hover:text-destructive"
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleTestNotification}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <TestTube className="w-4 h-4" />
+                  Test Notification
+                </Button>
+                
+                {settings.notificationType === "sound" && (
+                  <Button
+                    onClick={stopNotificationSound}
+                    variant="outline"
+                    className="flex items-center gap-2 text-destructive hover:text-destructive"
+                  >
+                    <Square className="w-4 h-4" />
+                    Stop Sound
+                  </Button>
+                )}
+              </div>
 
               {settings.notificationType === "browser" &&
                 notificationPermission !== "granted" && (
@@ -452,6 +582,69 @@ export default function Settings() {
                   <p>No activities saved yet</p>
                   <p className="text-sm">
                     Activities will appear here as you create them
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Session History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Session History (Debug)
+              </CardTitle>
+              <CardDescription>
+                Completed timer sessions ({sessions.length} total)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {sessions.length > 0 ? (
+                <>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {sessions.slice(-10).reverse().map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between p-3 border rounded-md text-sm"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium">
+                            {session.activityName} 
+                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                              session.type === 'work' 
+                                ? 'bg-primary/10 text-primary' 
+                                : 'bg-warning/10 text-warning'
+                            }`}>
+                              {session.type}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground">
+                            {Math.floor(session.duration / 60000)}min • {' '}
+                            {new Date(session.startTime).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => clearAllSessions()}
+                      className="flex items-center gap-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Clear All Sessions
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No completed sessions yet</p>
+                  <p className="text-sm">
+                    Sessions will appear here as you complete timers
                   </p>
                 </div>
               )}

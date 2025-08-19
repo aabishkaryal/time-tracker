@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import Layout from './components/Layout';
 import Timer from './pages/Timer';
-import Reports from './pages/Reports';
+import Activities from './pages/Activities';
 import Settings from './pages/Settings';
 import { useTimerStore } from './store';
 import { Toaster } from './components/ui/sonner';
@@ -20,7 +20,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Timer />} />
-          <Route path="reports" element={<Reports />} />
+          <Route path="activities" element={<Activities />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

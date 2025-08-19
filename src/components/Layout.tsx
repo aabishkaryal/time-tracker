@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Clock, BarChart3, Settings, Menu, X } from 'lucide-react';
+import { Clock, Activity, Settings, Menu, X } from 'lucide-react';
 
 export default function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
     { to: '/', label: 'Timer', icon: Clock },
-    { to: '/reports', label: 'Reports', icon: BarChart3 },
+    { to: '/activities', label: 'Activities', icon: Activity },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 

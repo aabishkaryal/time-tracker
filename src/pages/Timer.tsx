@@ -1,6 +1,14 @@
 import { Coffee, Pause, Play, RotateCcw, Square } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { CircularProgress } from "../components/CircularProgress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { stopNotificationSound } from "../lib/notifications";
 import { useTimerStore } from "../store";
 
 export default function Timer() {
@@ -12,21 +20,23 @@ export default function Timer() {
     currentActivity,
     activities,
     settings,
+    currentSessionType,
     startTimer,
     pauseTimer,
-    stopTimer,
+    resetTimer,
     setCustomTimeMs,
-    createActivity,
+    setSessionType,
     selectActivity,
+    createActivity,
     tick,
   } = useTimerStore();
 
-  const [isEditingActivity, setIsEditingActivity] = useState(false);
-  const [editingActivityName, setEditingActivityName] = useState("");
   const [isEditingMinutes, setIsEditingMinutes] = useState(false);
   const [isEditingSeconds, setIsEditingSeconds] = useState(false);
   const [editingMinutes, setEditingMinutes] = useState("");
   const [editingSeconds, setEditingSeconds] = useState("");
+  const [isCreatingActivity, setIsCreatingActivity] = useState(false);
+  const [newActivityName, setNewActivityName] = useState("");
 
   const formatTime = (
     milliseconds: number
@@ -45,7 +55,7 @@ export default function Timer() {
   };
 
   const getTimerState = () => {
-    if (timeRemaining === 0) return "completed";
+    if (timeRemaining === 0 && hasBeenStarted) return "completed";
     if (isRunning) return "running";
     if (isPaused) return "paused";
     return "idle";
@@ -70,7 +80,23 @@ export default function Timer() {
 
   // Track previous time remaining to detect completion
   const prevTimeRemainingRef = useRef<number>(timeRemaining);
-  const [isBreakMode, setIsBreakMode] = useState(false);
+  const isBreakMode = currentSessionType === "break";
+
+  // Track if timer was actually started (not just set to 0:00)
+  const [hasBeenStarted, setHasBeenStarted] = useState(false);
+
+  // Set hasBeenStarted when timer starts running
+  useEffect(() => {
+    if (isRunning && !isPaused && timeRemaining > 0) {
+      setHasBeenStarted(true);
+    }
+  }, [isRunning, isPaused, timeRemaining]);
+
+  // Reset hasBeenStarted when time is manually changed
+  useEffect(() => {
+    // Reset when totalTime changes (manual time setting)
+    setHasBeenStarted(false);
+  }, [totalTime]);
 
   // Detect timer completion
   useEffect(() => {
@@ -81,12 +107,12 @@ export default function Timer() {
         setTimeout(() => {
           const breakTime = settings.defaultBreakTime * 60 * 1000;
           setCustomTimeMs(breakTime);
-          setIsBreakMode(true);
+          setSessionType("break");
           startTimer();
         }, 1000); // Small delay to show completion message
       } else if (isBreakMode) {
         // Break completed, switch back to work mode
-        setIsBreakMode(false);
+        setSessionType("work");
         const workTime = settings.defaultWorkTime * 60 * 1000;
         setCustomTimeMs(workTime);
       }
@@ -100,6 +126,7 @@ export default function Timer() {
     settings.defaultBreakTime,
     settings.defaultWorkTime,
     setCustomTimeMs,
+    setSessionType,
     startTimer,
   ]);
 
@@ -114,49 +141,70 @@ export default function Timer() {
     completed: isBreakMode ? "Break completed!" : "Session completed!",
   };
 
-  const isEditable = !isRunning && !isPaused && timeRemaining > 0;
+  const isEditable = !isRunning && !isPaused;
 
   // Reset to default work time from settings
   const resetToDefault = () => {
+    stopNotificationSound(); // Stop any playing sound
     const defaultTimeMs = settings.defaultWorkTime * 60 * 1000;
     setCustomTimeMs(defaultTimeMs);
+    setSessionType("work");
+    setHasBeenStarted(false); // Reset the started state
   };
 
-  const handleActivityClick = () => {
-    if (!isEditable) return;
-    setIsEditingActivity(true);
-    setEditingActivityName(currentActivity?.name || "");
+  const handleStopTimer = () => {
+    stopNotificationSound(); // Stop any playing sound
+    resetTimer(); // Reset timer to current totalTime
+    setHasBeenStarted(false); // Reset the started state
   };
 
-  const handleActivitySave = () => {
-    const trimmedName = editingActivityName.trim();
+  const handleActivityChange = (activityId: string) => {
+    if (activityId === "create-new") {
+      setIsCreatingActivity(true);
+      return;
+    }
 
-    if (trimmedName) {
-      if (currentActivity && trimmedName === currentActivity.name) {
-        // No change, just exit edit mode
-        setIsEditingActivity(false);
-        return;
+    if (activityId === "unnamed") {
+      selectActivity(null);
+      // Reset to default time when switching to unnamed
+      const defaultTimeMs = settings.defaultWorkTime * 60 * 1000;
+      setCustomTimeMs(defaultTimeMs);
+      setSessionType("work");
+    } else {
+      const activity = activities.find((a) => a.id === activityId);
+      if (activity) {
+        selectActivity(activity);
+        // Reset to default time when switching activities
+        const defaultTimeMs = settings.defaultWorkTime * 60 * 1000;
+        setCustomTimeMs(defaultTimeMs);
+        setSessionType("work");
       }
-      // Check if activity exists
+    }
+    setHasBeenStarted(false);
+  };
+
+  const handleCreateActivity = () => {
+    const trimmedName = newActivityName.trim();
+    if (trimmedName) {
       const existingActivity = activities.find((a) => a.name === trimmedName);
       if (existingActivity) {
         selectActivity(existingActivity);
       } else {
         createActivity(trimmedName);
       }
-    } else {
-      // If cleared, remove current activity (will show "Unnamed Activity")
-      selectActivity(null);
+      // Reset to default time when creating/selecting new activity
+      const defaultTimeMs = settings.defaultWorkTime * 60 * 1000;
+      setCustomTimeMs(defaultTimeMs);
+      setSessionType("work");
+      setHasBeenStarted(false);
     }
-    setIsEditingActivity(false);
+    setIsCreatingActivity(false);
+    setNewActivityName("");
   };
 
-  const handleActivityKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleActivitySave();
-    } else if (e.key === "Escape") {
-      setIsEditingActivity(false);
-    }
+  const handleCancelCreate = () => {
+    setIsCreatingActivity(false);
+    setNewActivityName("");
   };
 
   const handleMinutesClick = () => {
@@ -180,10 +228,10 @@ export default function Timer() {
     const currentSeconds = Math.floor((totalTime % 60000) / 1000);
     if (mins >= 0 && mins <= 120) {
       const newTimeMs = (mins * 60 + currentSeconds) * 1000;
-      if (newTimeMs > 0) {
-        setCustomTimeMs(newTimeMs);
-        setIsBreakMode(false); // Reset break mode when manually setting time
-      }
+      // Allow setting to 0, even though it can't be started
+      setCustomTimeMs(newTimeMs);
+      setSessionType("work"); // Reset to work mode when manually setting time
+      setHasBeenStarted(false); // Reset started state when manually editing
     }
     setIsEditingMinutes(false);
   };
@@ -195,10 +243,10 @@ export default function Timer() {
     // Ensure seconds are within valid range
     if (secs >= 0 && secs <= 59) {
       const newTimeMs = (currentMinutes * 60 + secs) * 1000;
-      if (newTimeMs > 0) {
-        setCustomTimeMs(newTimeMs);
-        setIsBreakMode(false); // Reset break mode when manually setting time
-      }
+      // Allow setting to 0, even though it can't be started
+      setCustomTimeMs(newTimeMs);
+      setSessionType("work"); // Reset to work mode when manually setting time
+      setHasBeenStarted(false); // Reset started state when manually editing
     }
     setIsEditingSeconds(false);
   };
@@ -231,31 +279,72 @@ export default function Timer() {
             </div>
           )}
 
-          {!isBreakMode &&
-            (isEditingActivity ? (
-              <input
-                type="text"
-                value={editingActivityName}
-                onChange={(e) => setEditingActivityName(e.target.value)}
-                onBlur={handleActivitySave}
-                onKeyDown={handleActivityKeyDown}
-                className="text-2xl sm:text-3xl font-bold bg-transparent border-none outline-none text-center text-foreground placeholder-muted-foreground w-full mb-4"
-                placeholder="Enter activity name..."
-                autoFocus
-              />
-            ) : (
-              <h1
-                onClick={handleActivityClick}
-                className={`text-2xl sm:text-3xl font-bold text-foreground mb-4 ${
-                  isEditable
-                    ? "cursor-pointer hover:text-primary transition-colors"
-                    : "cursor-default"
-                }`}
-                title={isEditable ? "Click to edit activity name" : ""}
-              >
-                {currentActivity?.name || "Unnamed Activity"}
-              </h1>
-            ))}
+          {!isBreakMode && (
+            <div className="mb-4">
+              {isCreatingActivity ? (
+                <div className="max-w-md mx-auto space-y-3">
+                  <input
+                    type="text"
+                    value={newActivityName}
+                    onChange={(e) => setNewActivityName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreateActivity();
+                      if (e.key === "Escape") handleCancelCreate();
+                    }}
+                    placeholder="Enter activity name..."
+                    className="w-full text-2xl sm:text-3xl font-bold bg-transparent border-2 border-primary/30 rounded-lg px-4 py-2 text-center text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition-colors"
+                    autoFocus
+                  />
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={handleCreateActivity}
+                      disabled={!newActivityName.trim()}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Create
+                    </button>
+                    <button
+                      onClick={handleCancelCreate}
+                      className="px-4 py-2 bg-muted text-muted-foreground rounded-md font-medium hover:bg-muted/80 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  value={currentActivity?.id || "unnamed"}
+                  onValueChange={handleActivityChange}
+                  disabled={!isEditable}
+                >
+                  <SelectTrigger className="w-full max-w-md mx-auto text-2xl sm:text-3xl font-bold h-auto py-2 border-none bg-transparent hover:bg-accent/50 transition-colors text-center justify-center">
+                    <SelectValue placeholder="Select activity">
+                      <span className="text-2xl sm:text-3xl font-bold text-foreground">
+                        {currentActivity?.name || "Unnamed Activity"}
+                      </span>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unnamed">
+                      <span className="text-muted-foreground">
+                        Unnamed Activity
+                      </span>
+                    </SelectItem>
+                    {activities.map((activity) => (
+                      <SelectItem key={activity.id} value={activity.id}>
+                        {activity.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="create-new">
+                      <span className="text-primary font-medium">
+                        + Create New Activity
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
 
           <p
             className={`text-lg sm:text-xl font-medium transition-colors duration-300 ${
@@ -282,7 +371,7 @@ export default function Timer() {
             progress={progress}
             size={320}
             strokeWidth={8}
-            state={timerState as 'idle' | 'running' | 'paused' | 'completed'}
+            state={timerState as "idle" | "running" | "paused" | "completed"}
             isBreakMode={isBreakMode}
           >
             {/* Timer Display */}
@@ -372,9 +461,23 @@ export default function Timer() {
           {!isRunning ? (
             <button
               onClick={startTimer}
-              className="group relative flex items-center justify-center space-x-3 bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-primary/30 min-w-[140px]"
+              disabled={timeRemaining === 0}
+              className={`group relative flex items-center justify-center space-x-3 px-8 py-4 rounded-xl font-semibold text-lg shadow-lg transition-all duration-200 focus:outline-none min-w-[140px] ${
+                timeRemaining === 0
+                  ? "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                  : "bg-primary text-primary-foreground hover:shadow-xl transform hover:scale-105 focus:ring-4 focus:ring-primary/30"
+              }`}
+              title={
+                timeRemaining === 0
+                  ? "Set timer to a value greater than 00:00 to start"
+                  : undefined
+              }
             >
-              <Play className="w-5 h-5 transition-transform group-hover:scale-110" />
+              <Play
+                className={`w-5 h-5 transition-transform ${
+                  timeRemaining === 0 ? "" : "group-hover:scale-110"
+                }`}
+              />
               <span>{isPaused ? "Resume" : "Start"}</span>
             </button>
           ) : (
@@ -391,7 +494,7 @@ export default function Timer() {
           <div className="flex space-x-4">
             {/* Stop Button - Reset to current custom time */}
             <button
-              onClick={stopTimer}
+              onClick={handleStopTimer}
               className="group relative flex items-center justify-center space-x-2 bg-card hover:bg-accent text-card-foreground px-6 py-4 rounded-xl font-medium border-2 border-border hover:border-accent-foreground/20 shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-ring/20"
               title="Stop and reset to current time"
             >
@@ -412,7 +515,7 @@ export default function Timer() {
         </div>
 
         {/* Timer completion message */}
-        {timeRemaining === 0 && (
+        {timeRemaining === 0 && hasBeenStarted && (
           <div className="mt-6 p-4 bg-primary/10 border-2 border-primary/20 rounded-lg text-center">
             <p className="text-primary font-bold text-xl">
               {isBreakMode ? "☕ Break Complete!" : "🎉 Session Complete!"}
@@ -427,6 +530,38 @@ export default function Timer() {
                 Time to get back to work!
               </p>
             )}
+
+            <div className="flex justify-center gap-3 mt-4">
+              {!isBreakMode && !settings.autoStartBreak && (
+                <button
+                  onClick={() => {
+                    stopNotificationSound(); // Stop any playing sound
+                    resetTimer(); // Stop the timer first
+                    const breakTime = settings.defaultBreakTime * 60 * 1000;
+                    setCustomTimeMs(breakTime);
+                    setSessionType("break");
+                    setHasBeenStarted(false);
+                  }}
+                  className="group flex items-center justify-center space-x-3 bg-gradient-to-r from-warning to-warning/80 text-warning-foreground px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-warning/50 border-2 border-warning/20 hover:border-warning/40 animate-pulse"
+                >
+                  <Coffee className="w-6 h-6 transition-transform group-hover:scale-125 group-hover:rotate-12" />
+                  <span>Take a Break</span>
+                  <div className="w-2 h-2 bg-warning-foreground/60 rounded-full animate-ping"></div>
+                </button>
+              )}
+              {isBreakMode && (
+                <button
+                  onClick={() => {
+                    setSessionType("work");
+                    setHasBeenStarted(false);
+                  }}
+                  className="group flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-primary/30"
+                >
+                  <span>Back to Work</span>
+                </button>
+              )}
+            </div>
+
             {!isBreakMode && settings.autoStartBreak && (
               <p className="text-primary/80 text-sm mt-2">
                 Break timer ({settings.defaultBreakTime}m) will start
