@@ -1,6 +1,6 @@
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Coffee, Pause, Play, RotateCcw, Square } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { playNotificationSound } from "../lib/notifications";
+import { CircularProgress } from "../components/CircularProgress";
 import { useTimerStore } from "../store";
 
 export default function Timer() {
@@ -11,9 +11,10 @@ export default function Timer() {
     isPaused,
     currentActivity,
     activities,
+    settings,
     startTimer,
     pauseTimer,
-    resetTimer,
+    stopTimer,
     setCustomTimeMs,
     createActivity,
     selectActivity,
@@ -50,55 +51,76 @@ export default function Timer() {
     return "idle";
   };
 
-  const getStrokeColor = (state: string) => {
-    switch (state) {
-      case "running":
-        return "#10b981"; // green-500
-      case "paused":
-        return "#f59e0b"; // yellow-500
-      case "completed":
-        return "#8b5cf6"; // purple-500
-      default:
-        return "#9ca3af"; // gray-400
-    }
-  };
-
+  // Timer interval effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
     if (isRunning) {
-      interval = setInterval(tick, 1000);
+      interval = setInterval(() => {
+        tick();
+      }, 1000);
     }
 
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [isRunning, tick]);
 
   // Track previous time remaining to detect completion
   const prevTimeRemainingRef = useRef<number>(timeRemaining);
+  const [isBreakMode, setIsBreakMode] = useState(false);
 
-
-  // Detect timer completion and play notification
+  // Detect timer completion
   useEffect(() => {
     // Timer just completed (went from >0 to 0)
     if (prevTimeRemainingRef.current > 0 && timeRemaining === 0) {
-      playNotificationSound();
+      // Handle auto-start break if enabled
+      if (!isBreakMode && settings.autoStartBreak) {
+        setTimeout(() => {
+          const breakTime = settings.defaultBreakTime * 60 * 1000;
+          setCustomTimeMs(breakTime);
+          setIsBreakMode(true);
+          startTimer();
+        }, 1000); // Small delay to show completion message
+      } else if (isBreakMode) {
+        // Break completed, switch back to work mode
+        setIsBreakMode(false);
+        const workTime = settings.defaultWorkTime * 60 * 1000;
+        setCustomTimeMs(workTime);
+      }
     }
 
     prevTimeRemainingRef.current = timeRemaining;
-  }, [timeRemaining]);
+  }, [
+    timeRemaining,
+    isBreakMode,
+    settings.autoStartBreak,
+    settings.defaultBreakTime,
+    settings.defaultWorkTime,
+    setCustomTimeMs,
+    startTimer,
+  ]);
 
   const { minutes, seconds } = formatTime(timeRemaining);
   const progress = getProgress();
   const timerState = getTimerState();
 
   const stateText = {
-    idle: "Ready to start",
-    running: "Timer running",
-    paused: "Timer paused",
-    completed: "Session completed!",
+    idle: isBreakMode ? "Break time - ready to start" : "Ready to start",
+    running: isBreakMode ? "Break time running" : "Timer running",
+    paused: isBreakMode ? "Break paused" : "Timer paused",
+    completed: isBreakMode ? "Break completed!" : "Session completed!",
   };
 
   const isEditable = !isRunning && !isPaused && timeRemaining > 0;
+
+  // Reset to default work time from settings
+  const resetToDefault = () => {
+    const defaultTimeMs = settings.defaultWorkTime * 60 * 1000;
+    setCustomTimeMs(defaultTimeMs);
+  };
 
   const handleActivityClick = () => {
     if (!isEditable) return;
@@ -108,7 +130,7 @@ export default function Timer() {
 
   const handleActivitySave = () => {
     const trimmedName = editingActivityName.trim();
-    
+
     if (trimmedName) {
       if (currentActivity && trimmedName === currentActivity.name) {
         // No change, just exit edit mode
@@ -160,6 +182,7 @@ export default function Timer() {
       const newTimeMs = (mins * 60 + currentSeconds) * 1000;
       if (newTimeMs > 0) {
         setCustomTimeMs(newTimeMs);
+        setIsBreakMode(false); // Reset break mode when manually setting time
       }
     }
     setIsEditingMinutes(false);
@@ -174,6 +197,7 @@ export default function Timer() {
       const newTimeMs = (currentMinutes * 60 + secs) * 1000;
       if (newTimeMs > 0) {
         setCustomTimeMs(newTimeMs);
+        setIsBreakMode(false); // Reset break mode when manually setting time
       }
     }
     setIsEditingSeconds(false);
@@ -200,40 +224,52 @@ export default function Timer() {
       <div className="w-full max-w-2xl mx-auto">
         {/* Activity Name - Inline Editable */}
         <div className="text-center mb-8">
-          {isEditingActivity ? (
-            <input
-              type="text"
-              value={editingActivityName}
-              onChange={(e) => setEditingActivityName(e.target.value)}
-              onBlur={handleActivitySave}
-              onKeyDown={handleActivityKeyDown}
-              className="text-2xl sm:text-3xl font-bold bg-transparent border-none outline-none text-center text-gray-800 placeholder-gray-400 w-full mb-4"
-              placeholder="Enter activity name..."
-              autoFocus
-            />
-          ) : (
-            <h1
-              onClick={handleActivityClick}
-              className={`text-2xl sm:text-3xl font-bold text-gray-800 mb-4 ${
-                isEditable
-                  ? "cursor-pointer hover:text-blue-600 transition-colors"
-                  : "cursor-default"
-              }`}
-              title={isEditable ? "Click to edit activity name" : ""}
-            >
-              {currentActivity?.name || "Unnamed Activity"}
-            </h1>
+          {isBreakMode && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Coffee className="w-5 h-5 text-warning" />
+              <span className="text-warning font-medium">Break Time</span>
+            </div>
           )}
+
+          {!isBreakMode &&
+            (isEditingActivity ? (
+              <input
+                type="text"
+                value={editingActivityName}
+                onChange={(e) => setEditingActivityName(e.target.value)}
+                onBlur={handleActivitySave}
+                onKeyDown={handleActivityKeyDown}
+                className="text-2xl sm:text-3xl font-bold bg-transparent border-none outline-none text-center text-foreground placeholder-muted-foreground w-full mb-4"
+                placeholder="Enter activity name..."
+                autoFocus
+              />
+            ) : (
+              <h1
+                onClick={handleActivityClick}
+                className={`text-2xl sm:text-3xl font-bold text-foreground mb-4 ${
+                  isEditable
+                    ? "cursor-pointer hover:text-primary transition-colors"
+                    : "cursor-default"
+                }`}
+                title={isEditable ? "Click to edit activity name" : ""}
+              >
+                {currentActivity?.name || "Unnamed Activity"}
+              </h1>
+            ))}
 
           <p
             className={`text-lg sm:text-xl font-medium transition-colors duration-300 ${
               timerState === "running"
-                ? "text-green-600"
+                ? isBreakMode
+                  ? "text-warning"
+                  : "text-primary"
                 : timerState === "paused"
-                ? "text-orange-600"
+                ? "text-warning"
                 : timerState === "completed"
-                ? "text-purple-600"
-                : "text-gray-500"
+                ? isBreakMode
+                  ? "text-warning"
+                  : "text-muted-foreground"
+                : "text-muted-foreground"
             }`}
           >
             {stateText[timerState]}
@@ -242,125 +278,101 @@ export default function Timer() {
 
         {/* Timer Circle */}
         <div className="flex justify-center mb-8 sm:mb-12">
-          <div className="relative">
-            {/* Background Circle */}
-            <svg
-              className="w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 transform -rotate-90"
-              viewBox="0 0 200 200"
-            >
-              <circle
-                cx="100"
-                cy="100"
-                r="90"
-                fill="none"
-                stroke="#e5e7eb"
-                strokeWidth="8"
-              />
-              {/* Progress Circle */}
-              <circle
-                cx="100"
-                cy="100"
-                r="90"
-                fill="none"
-                stroke={getStrokeColor(timerState)}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 90}`}
-                strokeDashoffset={`${2 * Math.PI * 90 * (1 - progress / 100)}`}
-                className="transition-all duration-1000 ease-out"
-              />
-            </svg>
-
+          <CircularProgress
+            progress={progress}
+            size={320}
+            strokeWidth={8}
+            state={timerState as 'idle' | 'running' | 'paused' | 'completed'}
+            isBreakMode={isBreakMode}
+          >
             {/* Timer Display */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  {isEditingMinutes ? (
-                    <input
-                      type="text"
-                      pattern="[0-9]*"
-                      inputMode="numeric"
-                      value={editingMinutes}
-                      onChange={(e) =>
-                        setEditingMinutes(e.target.value.replace(/[^0-9]/g, ""))
-                      }
-                      onBlur={handleMinutesSave}
-                      onKeyDown={handleMinutesKeyDown}
-                      className="w-16 sm:w-20 text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-gray-900 bg-transparent border-none outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      autoFocus
-                    />
-                  ) : (
-                    <span
-                      onClick={handleMinutesClick}
-                      className={`text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-gray-900 ${
-                        isEditable
-                          ? "cursor-pointer hover:text-blue-600 transition-colors"
-                          : "cursor-default"
-                      }`}
-                      title={isEditable ? "Click to edit minutes" : ""}
-                    >
-                      {minutes}
-                    </span>
-                  )}
-
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                {isEditingMinutes ? (
+                  <input
+                    type="text"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    value={editingMinutes}
+                    onChange={(e) =>
+                      setEditingMinutes(e.target.value.replace(/[^0-9]/g, ""))
+                    }
+                    onBlur={handleMinutesSave}
+                    onKeyDown={handleMinutesKeyDown}
+                    className="w-16 sm:w-20 text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-foreground bg-transparent border-none outline-none text-center"
+                    autoFocus
+                  />
+                ) : (
                   <span
-                    className={`text-3xl sm:text-4xl md:text-5xl font-mono font-bold transition-opacity duration-500 ${
-                      isRunning ? "opacity-50" : "opacity-100"
-                    } text-gray-600`}
+                    onClick={handleMinutesClick}
+                    className={`text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-foreground ${
+                      isEditable
+                        ? "cursor-pointer hover:text-primary transition-colors"
+                        : "cursor-default"
+                    }`}
+                    title={isEditable ? "Click to edit minutes" : ""}
                   >
-                    :
+                    {minutes}
                   </span>
+                )}
 
-                  {isEditingSeconds ? (
-                    <input
-                      type="text"
-                      pattern="[0-9]*"
-                      inputMode="numeric"
-                      value={editingSeconds}
-                      onChange={(e) => {
-                        let value = e.target.value.replace(/[^0-9]/g, "");
+                <span
+                  className={`text-3xl sm:text-4xl md:text-5xl font-mono font-bold transition-opacity duration-500 ${
+                    isRunning ? "opacity-50" : "opacity-100"
+                  } text-muted-foreground`}
+                >
+                  :
+                </span>
 
-                        // If 3+ characters, take the last 2
-                        if (value.length > 2) {
-                          value = value.slice(-2);
-                        }
+                {isEditingSeconds ? (
+                  <input
+                    type="text"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    value={editingSeconds}
+                    onChange={(e) => {
+                      let value = e.target.value.replace(/[^0-9]/g, "");
 
-                        // Check if valid (empty or <= 59)
-                        if (value === "" || parseInt(value) <= 59) {
-                          setEditingSeconds(value);
-                        }
-                      }}
-                      onBlur={handleSecondsSave}
-                      onKeyDown={handleSecondsKeyDown}
-                      className="w-16 sm:w-20 text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-gray-900 bg-transparent border-none outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      autoFocus
-                    />
-                  ) : (
-                    <span
-                      onClick={handleSecondsClick}
-                      className={`text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-gray-900 ${
-                        isEditable
-                          ? "cursor-pointer hover:text-blue-600 transition-colors"
-                          : "cursor-default"
-                      }`}
-                      title={isEditable ? "Click to edit seconds" : ""}
-                    >
-                      {seconds}
-                    </span>
-                  )}
-                </div>
+                      // If 3+ characters, take the last 2
+                      if (value.length > 2) {
+                        value = value.slice(-2);
+                      }
+
+                      // Check if valid (empty or <= 59)
+                      if (value === "" || parseInt(value) <= 59) {
+                        setEditingSeconds(value);
+                      }
+                    }}
+                    onBlur={handleSecondsSave}
+                    onKeyDown={handleSecondsKeyDown}
+                    className="w-16 sm:w-20 text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-foreground bg-transparent border-none outline-none text-center"
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    onClick={handleSecondsClick}
+                    className={`text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-foreground ${
+                      isEditable
+                        ? "cursor-pointer hover:text-primary transition-colors"
+                        : "cursor-default"
+                    }`}
+                    title={isEditable ? "Click to edit seconds" : ""}
+                  >
+                    {seconds}
+                  </span>
+                )}
               </div>
             </div>
-          </div>
+          </CircularProgress>
         </div>
 
         {/* Control Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-          {/* Primary Action Button */}
+          {/* Primary Action Button - Start/Pause */}
           {!isRunning ? (
             <button
               onClick={startTimer}
-              className="group relative flex items-center justify-center space-x-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-300 min-w-[140px]"
+              className="group relative flex items-center justify-center space-x-3 bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-primary/30 min-w-[140px]"
             >
               <Play className="w-5 h-5 transition-transform group-hover:scale-110" />
               <span>{isPaused ? "Resume" : "Start"}</span>
@@ -368,7 +380,7 @@ export default function Timer() {
           ) : (
             <button
               onClick={pauseTimer}
-              className="group relative flex items-center justify-center space-x-3 bg-gradient-to-r from-orange-500 to-yellow-600 hover:from-orange-600 hover:to-yellow-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-orange-300 min-w-[140px]"
+              className="group relative flex items-center justify-center space-x-3 bg-warning text-warning-foreground px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-warning/30 min-w-[140px]"
             >
               <Pause className="w-5 h-5 transition-transform group-hover:scale-110" />
               <span>Pause</span>
@@ -377,10 +389,21 @@ export default function Timer() {
 
           {/* Secondary Actions */}
           <div className="flex space-x-4">
+            {/* Stop Button - Reset to current custom time */}
             <button
-              onClick={resetTimer}
-              className="group relative flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 text-gray-700 px-6 py-4 rounded-xl font-medium border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-gray-200"
-              title="Reset Timer"
+              onClick={stopTimer}
+              className="group relative flex items-center justify-center space-x-2 bg-card hover:bg-accent text-card-foreground px-6 py-4 rounded-xl font-medium border-2 border-border hover:border-accent-foreground/20 shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-ring/20"
+              title="Stop and reset to current time"
+            >
+              <Square className="w-5 h-5 transition-transform group-hover:scale-110" />
+              <span className="hidden sm:inline">Stop</span>
+            </button>
+
+            {/* Reset Button - Reset to default time */}
+            <button
+              onClick={resetToDefault}
+              className="group relative flex items-center justify-center space-x-2 bg-card hover:bg-accent text-card-foreground px-6 py-4 rounded-xl font-medium border-2 border-border hover:border-accent-foreground/20 shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-ring/20"
+              title="Reset to default time"
             >
               <RotateCcw className="w-5 h-5 transition-transform group-hover:rotate-180 duration-300" />
               <span className="hidden sm:inline">Reset</span>
@@ -390,13 +413,24 @@ export default function Timer() {
 
         {/* Timer completion message */}
         {timeRemaining === 0 && (
-          <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg text-center">
-            <p className="text-green-800 font-bold text-xl">
-              🎉 Session Complete!
+          <div className="mt-6 p-4 bg-primary/10 border-2 border-primary/20 rounded-lg text-center">
+            <p className="text-primary font-bold text-xl">
+              {isBreakMode ? "☕ Break Complete!" : "🎉 Session Complete!"}
             </p>
-            {currentActivity?.name && (
-              <p className="text-green-700 text-base mt-1">
+            {!isBreakMode && currentActivity?.name && (
+              <p className="text-primary/90 text-base mt-1">
                 Great work on "{currentActivity.name}"
+              </p>
+            )}
+            {isBreakMode && (
+              <p className="text-primary/90 text-base mt-1">
+                Time to get back to work!
+              </p>
+            )}
+            {!isBreakMode && settings.autoStartBreak && (
+              <p className="text-primary/80 text-sm mt-2">
+                Break timer ({settings.defaultBreakTime}m) will start
+                automatically...
               </p>
             )}
           </div>

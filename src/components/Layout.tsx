@@ -12,16 +12,16 @@ export default function Layout() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <nav className="bg-white/80 backdrop-blur-md shadow-lg border-b border-white/20 sticky top-0 z-50">
+    <div className="min-h-screen bg-background">
+      <nav className="bg-background/80 backdrop-blur-md shadow-lg border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo/Brand */}
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-primary-foreground" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold text-foreground">
                 Time Tracker
               </h1>
             </div>
@@ -35,8 +35,8 @@ export default function Layout() {
                   className={({ isActive }) =>
                     `flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
                       isActive
-                        ? 'bg-blue-100 text-blue-700 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'bg-primary/10 text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     }`
                   }
                   end={to === '/'}
@@ -51,7 +51,7 @@ export default function Layout() {
             <div className="md:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
                 aria-label="Toggle menu"
               >
                 {isMobileMenuOpen ? (
@@ -65,7 +65,7 @@ export default function Layout() {
 
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-200">
+            <div className="md:hidden py-4 border-t border-border">
               <div className="flex flex-col space-y-2">
                 {navItems.map(({ to, label, icon: Icon }) => (
                   <NavLink
@@ -75,8 +75,8 @@ export default function Layout() {
                     className={({ isActive }) =>
                       `flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                         isActive
-                          ? 'bg-blue-100 text-blue-700 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                          ? 'bg-primary/10 text-primary shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                       }`
                     }
                     end={to === '/'}

@@ -1,4 +1,3 @@
-import { Circle } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface CircularProgressProps {
@@ -7,6 +6,8 @@ interface CircularProgressProps {
   strokeWidth?: number;
   className?: string;
   children?: React.ReactNode;
+  state?: 'idle' | 'running' | 'paused' | 'completed';
+  isBreakMode?: boolean;
 }
 
 export function CircularProgress({ 
@@ -14,11 +15,27 @@ export function CircularProgress({
   size = 200, 
   strokeWidth = 8, 
   className,
-  children 
+  children,
+  state = 'idle',
+  isBreakMode = false
 }: CircularProgressProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (progress / 100) * circumference;
+
+  // Determine progress color based on state and mode
+  const getProgressColorClass = () => {
+    switch (state) {
+      case 'running':
+        return isBreakMode ? 'text-warning' : 'text-primary';
+      case 'paused':
+        return 'text-warning';
+      case 'completed':
+        return isBreakMode ? 'text-warning' : 'text-muted-foreground';
+      default:
+        return 'text-border';
+    }
+  };
 
   return (
     <div className={cn("relative inline-flex", className)} style={{ width: size, height: size }}>
@@ -34,7 +51,8 @@ export function CircularProgress({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#e5e7eb"
+          stroke="currentColor"
+          className="text-border"
           strokeWidth={strokeWidth}
         />
         {/* Progress circle */}
@@ -44,11 +62,11 @@ export function CircularProgress({
           r={radius}
           fill="none"
           stroke="currentColor"
+          className={cn('transition-all duration-1000 ease-out', getProgressColorClass())}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="transition-all duration-1000 ease-out"
         />
       </svg>
       {children && (

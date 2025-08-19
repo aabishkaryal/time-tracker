@@ -1,10 +1,75 @@
 /**
- * Audio notification utilities for timer events
+ * Notification utilities for timer events
+ * Supports both audio and browser notifications
  */
+
+import { toast } from "sonner";
 
 // Extended window interface for WebKit audio context
 interface ExtendedWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
+}
+
+/**
+ * Request permission for browser notifications
+ */
+export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (!("Notification" in window)) {
+    toast.error("Browser notifications not supported");
+    return "denied";
+  }
+
+  if (Notification.permission === "default") {
+    return await Notification.requestPermission();
+  }
+
+  return Notification.permission;
+}
+
+/**
+ * Show a browser notification
+ */
+export function showBrowserNotification(
+  title: string,
+  body: string,
+  options: NotificationOptions = {}
+): void {
+  if (!("Notification" in window)) {
+    toast.error("Browser notifications not supported");
+    return;
+  }
+
+  if (Notification.permission === "granted") {
+    const notification = new Notification(title, {
+      body,
+      icon: "/favicon.ico",
+      badge: "/favicon.ico",
+      tag: "timer-notification",
+      requireInteraction: false,
+      ...options,
+    });
+
+    // Auto-close notification after 5 seconds
+    setTimeout(() => {
+      notification.close();
+    }, 5000);
+  } else if (Notification.permission === "default") {
+    requestNotificationPermission().then((permission) => {
+      if (permission === "granted") {
+        showBrowserNotification(title, body, options);
+      }
+    });
+  }
+}
+
+/**
+ * Get current notification permission status
+ */
+export function getNotificationPermission(): NotificationPermission {
+  if (!("Notification" in window)) {
+    return "denied";
+  }
+  return Notification.permission;
 }
 
 /**
@@ -17,7 +82,7 @@ export function playNotificationSound(): void {
     const AudioContextClass =
       window.AudioContext || (window as ExtendedWindow).webkitAudioContext;
     if (!AudioContextClass) {
-      console.log("AudioContext not supported");
+      toast.error("Audio notifications not supported");
       return;
     }
 
@@ -39,10 +104,7 @@ export function playNotificationSound(): void {
 
     // Fade in and out
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(
-      0.3,
-      audioContext.currentTime + 0.1
-    );
+    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
     gainNode.gain.exponentialRampToValueAtTime(
       0.01,
       audioContext.currentTime + 0.8
@@ -50,40 +112,29 @@ export function playNotificationSound(): void {
 
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.8);
+  } catch {
+    toast.error("Failed to play notification sound");
+  }
+}
 
-    // Play a second chime for emphasis
-    setTimeout(() => {
-      try {
-        const osc2 = audioContext.createOscillator();
-        const gain2 = audioContext.createGain();
-
-        osc2.connect(gain2);
-        gain2.connect(audioContext.destination);
-
-        osc2.frequency.setValueAtTime(600, audioContext.currentTime);
-        osc2.frequency.exponentialRampToValueAtTime(
-          300,
-          audioContext.currentTime + 0.3
-        );
-
-        gain2.gain.setValueAtTime(0, audioContext.currentTime);
-        gain2.gain.linearRampToValueAtTime(
-          0.25,
-          audioContext.currentTime + 0.1
-        );
-        gain2.gain.exponentialRampToValueAtTime(
-          0.01,
-          audioContext.currentTime + 0.6
-        );
-
-        osc2.start(audioContext.currentTime);
-        osc2.stop(audioContext.currentTime + 0.6);
-      } catch (secondError) {
-        console.log("Second chime failed:", secondError);
-      }
-    }, 200);
-  } catch (error) {
-    console.log("Audio notification not supported:", error);
-    // Fallback: could add browser notification here later
+/**
+ * Play notification based on type preference
+ */
+export function playNotification(
+  type: "sound" | "browser" | "none",
+  title = "Timer Complete!",
+  body = "Your timer session has finished."
+): void {
+  switch (type) {
+    case "sound":
+      playNotificationSound();
+      break;
+    case "browser":
+      showBrowserNotification(title, body);
+      break;
+    case "none":
+    default:
+      // Do nothing
+      break;
   }
 }
