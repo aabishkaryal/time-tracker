@@ -1,61 +1,97 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { Clock, BarChart3, Settings, Menu, X } from 'lucide-react';
 
 export default function Layout() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navItems = [
+    { to: '/', label: 'Timer', icon: Clock },
+    { to: '/reports', label: 'Reports', icon: BarChart3 },
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex space-x-8">
-            <div className="flex items-center py-4">
-              <h2 className="text-xl font-semibold">Time Tracker</h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <nav className="bg-white/80 backdrop-blur-md shadow-lg border-b border-white/20 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo/Brand */}
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-white" />
+              </div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                Time Tracker
+              </h1>
             </div>
-            
-            <div className="flex space-x-8">
-              <NavLink 
-                to="/" 
-                className={({ isActive }) => 
-                  `py-4 px-2 border-b-2 font-medium text-sm ${
-                    isActive 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`
-                }
-                end
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-1">
+              {navItems.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                      isActive
+                        ? 'bg-blue-100 text-blue-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`
+                  }
+                  end={to === '/'}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
+                aria-label="Toggle menu"
               >
-                Timer
-              </NavLink>
-              
-              <NavLink 
-                to="/reports" 
-                className={({ isActive }) => 
-                  `py-4 px-2 border-b-2 font-medium text-sm ${
-                    isActive 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`
-                }
-              >
-                Reports
-              </NavLink>
-              
-              <NavLink 
-                to="/settings" 
-                className={({ isActive }) => 
-                  `py-4 px-2 border-b-2 font-medium text-sm ${
-                    isActive 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`
-                }
-              >
-                Settings
-              </NavLink>
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
             </div>
           </div>
+
+          {/* Mobile Navigation */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden py-4 border-t border-gray-200">
+              <div className="flex flex-col space-y-2">
+                {navItems.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-blue-100 text-blue-700 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      }`
+                    }
+                    end={to === '/'}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
-      <main>
+      <main className="relative">
         <Outlet />
       </main>
     </div>
