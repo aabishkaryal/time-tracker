@@ -5,7 +5,9 @@ import {
   requestNotificationPermission,
   showBrowserNotification,
 } from "../lib/notifications";
+import { databaseService } from "../lib/database-service";
 
+// Store-level activity interface (uses string IDs for UI compatibility)
 interface Activity {
   id: string;
   name: string;
@@ -35,12 +37,12 @@ interface Session {
 }
 
 interface TimerStore {
-  // Timer state
-  timeRemaining: number;
-  totalTime: number;
+  // Timer state - using persistent approach
+  startTime: number | null; // When timer actually started (timestamp)
+  totalDuration: number; // Total time for this session (ms)
   isRunning: boolean;
   isPaused: boolean;
-  sessionStartTime: Date | null;
+  pausedTime: number; // How much time was spent paused (ms)
   currentSessionType: "work" | "break";
 
   // Activity state
@@ -60,10 +62,15 @@ interface TimerStore {
   resetTimer: () => void;
   setCustomTime: (minutes: number) => void;
   setCustomTimeMs: (milliseconds: number) => void;
-  tick: () => void;
+  
+  // Computed properties
+  getTimeRemaining: () => number;
+  
+  // Timer completion
+  checkTimerCompletion: () => Promise<boolean>;
 
   // Activity actions
-  createActivity: (name: string) => void;
+  createActivity: (name: string) => Promise<void>;
   selectActivity: (activity: Activity | null) => void;
   deleteActivity: (id: string) => void;
   clearAllActivities: () => void;
@@ -74,6 +81,10 @@ interface TimerStore {
   resetSettings: () => void;
   testNotification: () => void;
   applyTheme: () => void;
+
+  // IndexedDB loading actions
+  loadActivitiesFromIndexedDB: () => Promise<void>;
+  loadSessionsFromIndexedDB: () => Promise<void>;
 
   // Session actions
   getSessions: () => Session[];
@@ -133,11 +144,11 @@ export const useTimerStore = create<TimerStore>()(
   persist(
     (set, get) => ({
       // Timer state
-      timeRemaining: DEFAULT_WORK_TIME * 60 * 1000,
-      totalTime: DEFAULT_WORK_TIME * 60 * 1000,
+      startTime: null,
+      totalDuration: DEFAULT_WORK_TIME * 60 * 1000,
       isRunning: false,
       isPaused: false,
-      sessionStartTime: null,
+      pausedTime: 0,
       currentSessionType: "work",
 
       // Activity state
@@ -151,92 +162,124 @@ export const useTimerStore = create<TimerStore>()(
       settings: DEFAULT_SETTINGS,
 
       startTimer: () => {
-        const { isPaused, sessionStartTime } = get();
-        set({ 
-          isRunning: true, 
+        const { isPaused, pausedTime } = get();
+        set({
+          isRunning: true,
           isPaused: false,
-          // Only set start time if not resuming from pause
-          sessionStartTime: isPaused ? sessionStartTime : new Date()
+          startTime: isPaused ? Date.now() - pausedTime : Date.now(),
+          pausedTime: 0,
         });
       },
 
-      pauseTimer: () => set({ isRunning: false, isPaused: true }),
+      pauseTimer: () => {
+        const { startTime } = get();
+        set({
+          isRunning: false,
+          isPaused: true,
+          pausedTime: startTime ? Date.now() - startTime : 0,
+        });
+      },
 
       resetTimer: () => {
-        const { totalTime } = get();
         set({
-          timeRemaining: totalTime,
+          startTime: null,
           isRunning: false,
           isPaused: false,
+          pausedTime: 0,
         });
       },
 
       stopTimer: () => {
         set({
+          startTime: null,
           isRunning: false,
           isPaused: false,
-          sessionStartTime: null,
+          pausedTime: 0,
         });
       },
 
       setCustomTime: (minutes: number) => {
         const timeInMs = minutes * 60 * 1000;
         set({
-          timeRemaining: timeInMs,
-          totalTime: timeInMs,
+          totalDuration: timeInMs,
+          startTime: null,
           isRunning: false,
           isPaused: false,
-          sessionStartTime: null,
+          pausedTime: 0,
         });
       },
 
       setCustomTimeMs: (milliseconds: number) => {
         set({
-          timeRemaining: milliseconds,
-          totalTime: milliseconds,
+          totalDuration: milliseconds,
+          startTime: null,
           isRunning: false,
           isPaused: false,
-          sessionStartTime: null,
+          pausedTime: 0,
         });
       },
 
-      tick: () => {
+      getTimeRemaining: () => {
+        const { startTime, totalDuration, isPaused, pausedTime } = get();
+        if (!startTime) return totalDuration;
+        if (isPaused) return totalDuration - pausedTime;
+        const elapsed = Date.now() - startTime;
+        return Math.max(0, totalDuration - elapsed);
+      },
+
+      checkTimerCompletion: async () => {
         const { 
-          timeRemaining, 
           isRunning, 
+          startTime,
           settings, 
-          sessionStartTime, 
           currentActivity, 
-          totalTime, 
+          totalDuration, 
           currentSessionType,
           sessions 
         } = get();
         
-        if (isRunning && timeRemaining > 1000) {
-          set({ timeRemaining: timeRemaining - 1000 });
-        } else if (isRunning && timeRemaining <= 1000) {
+        const timeRemaining = get().getTimeRemaining();
+        
+        if (isRunning && timeRemaining === 0 && startTime) {
           // Record completed session
-          if (sessionStartTime) {
-            const endTime = new Date();
-            const session: Session = {
-              id: crypto.randomUUID(),
-              activityId: currentActivity?.id || null,
-              activityName: currentActivity?.name || "Unnamed Activity",
+          const endTime = new Date();
+          const session: Session = {
+            id: crypto.randomUUID(),
+            activityId: currentActivity?.id || null,
+            activityName: currentActivity?.name || "Unnamed Activity",
+            type: currentSessionType,
+            duration: totalDuration,
+            startTime: new Date(startTime),
+            endTime: endTime,
+            completed: true
+          };
+          
+          set({ 
+            isRunning: false, 
+            startTime: null,
+            pausedTime: 0,
+            sessions: [...sessions, session]
+          });
+
+          // Save to IndexedDB (fire-and-forget pattern)
+          if (currentActivity) {
+            databaseService.createSession({
+              activityId: currentActivity.id,
+              activityName: currentActivity.name,
               type: currentSessionType,
-              duration: totalTime,
-              startTime: sessionStartTime,
+              duration: totalDuration,
+              startTime: new Date(startTime),
               endTime: endTime,
               completed: true
-            };
-            
-            set({ 
-              isRunning: false, 
-              timeRemaining: 0,
-              sessionStartTime: null,
-              sessions: [...sessions, session]
+            }).then(async () => {
+              // Update activity usage
+              await databaseService.updateActivityUsage(parseInt(currentActivity.id));
+              
+              // Update daily stats
+              await databaseService.calculateAndUpdateDailyStats(new Date());
+            }).catch(error => {
+              console.error('Failed to save session to IndexedDB:', error);
             });
-          } else {
-            set({ isRunning: false, timeRemaining: 0, sessionStartTime: null });
           }
 
           // Trigger notification based on settings
@@ -249,20 +292,44 @@ export const useTimerStore = create<TimerStore>()(
               "Your timer session has finished."
             );
           }
+          
+          return true; // Timer completed
         }
+        
+        return false; // Timer not completed
       },
 
       // Activity actions
-      createActivity: (name: string) => {
-        const newActivity: Activity = {
-          id: crypto.randomUUID(),
-          name: name.trim(),
-          createdAt: new Date(),
-        };
-        set((state) => ({
-          activities: [...state.activities, newActivity],
-          currentActivity: newActivity,
-        }));
+      createActivity: async (name: string) => {
+        try {
+          const dbActivity = await databaseService.createActivity({
+            name: name.trim(),
+            createdAt: new Date(),
+          });
+          
+          const newActivity: Activity = {
+            id: dbActivity.id!.toString(),
+            name: dbActivity.name,
+            createdAt: dbActivity.createdAt,
+          };
+          
+          set((state) => ({
+            activities: [...state.activities, newActivity],
+            currentActivity: newActivity,
+          }));
+        } catch (error) {
+          console.error('Failed to create activity in IndexedDB:', error);
+          // Fallback to localStorage-only creation if IndexedDB fails
+          const newActivity: Activity = {
+            id: crypto.randomUUID(),
+            name: name.trim(),
+            createdAt: new Date(),
+          };
+          set((state) => ({
+            activities: [...state.activities, newActivity],
+            currentActivity: newActivity,
+          }));
+        }
       },
 
       selectActivity: (activity: Activity | null) => {
@@ -377,7 +444,6 @@ export const useTimerStore = create<TimerStore>()(
       },
 
       getTodaysActivityStats: () => {
-        const { sessions } = get();
         const todaysSessions = get().getTodaysSessions();
         
         // Group by activity and calculate totals
@@ -411,22 +477,106 @@ export const useTimerStore = create<TimerStore>()(
           .sort((a, b) => b.totalTime - a.totalTime)
           .slice(0, 3); // Top 3
       },
+
+      // IndexedDB loading actions
+      loadActivitiesFromIndexedDB: async () => {
+        try {
+          const dbActivities = await databaseService.getActiveActivities();
+          const activities: Activity[] = dbActivities.map(activity => ({
+            id: activity.id!.toString(),
+            name: activity.name,
+            createdAt: activity.createdAt,
+          }));
+          
+          set({ activities });
+          console.log(`Loaded ${activities.length} activities from IndexedDB`);
+        } catch (error) {
+          console.error('Failed to load activities from IndexedDB:', error);
+        }
+      },
+
+      loadSessionsFromIndexedDB: async () => {
+        try {
+          // Load recent sessions (last 30 days)
+          const endDate = new Date();
+          const startDate = new Date();
+          startDate.setDate(endDate.getDate() - 30);
+          
+          const dbSessions = await databaseService.getCompletedSessionsInRange(startDate, endDate);
+          const sessions: Session[] = dbSessions.map(session => ({
+            id: session.id!.toString(),
+            activityId: session.activityId?.toString() || null,
+            activityName: session.activityName,
+            type: session.type,
+            duration: session.duration * 1000, // Convert from seconds to milliseconds
+            startTime: session.startTime,
+            endTime: session.endTime || session.startTime,
+            completed: session.completed,
+          }));
+          
+          set({ sessions });
+          console.log(`Loaded ${sessions.length} sessions from IndexedDB`);
+        } catch (error) {
+          console.error('Failed to load sessions from IndexedDB:', error);
+        }
+      },
     }),
     {
       name: "timer-storage",
       partialize: (state) => ({
-        activities: state.activities,
+        // Keep timer state and settings in localStorage for fast access
         currentActivity: state.currentActivity,
-        totalTime: state.totalTime,
         settings: state.settings,
-        sessions: state.sessions,
+        // Timer persistence state
+        startTime: state.startTime,
+        totalDuration: state.totalDuration,
+        isRunning: state.isRunning,
+        isPaused: state.isPaused,
+        pausedTime: state.pausedTime,
+        currentSessionType: state.currentSessionType,
+        // Large data stays in IndexedDB
+        activities: [],
+        sessions: []
       }),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('Store rehydration failed:', error);
+          return;
+        }
+
         // Apply theme when store is rehydrated
         if (state?.settings?.theme) {
           applyThemeToDocument(state.settings.theme);
         }
+        
+        // Load activities and sessions from IndexedDB
+        setTimeout(() => {
+          loadDataFromIndexedDB();
+        }, 100);
       },
     }
   )
 );
+
+/**
+ * Load data from IndexedDB into the store
+ */
+const loadDataFromIndexedDB = async (): Promise<void> => {
+  try {
+    const store = useTimerStore.getState();
+    await Promise.all([
+      store.loadActivitiesFromIndexedDB(),
+      store.loadSessionsFromIndexedDB()
+    ]);
+    console.log('Data loaded from IndexedDB');
+  } catch (error) {
+    console.error('Failed to load data from IndexedDB:', error);
+  }
+};
+
+// Export database utilities for debugging and testing
+export const databaseUtils = {
+  loadDataFromIndexedDB,
+  getDatabaseStats: () => databaseService.getDatabaseStats(),
+  clearAllData: () => databaseService.clearAllData()
+};

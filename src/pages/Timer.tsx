@@ -13,14 +13,15 @@ import { useTimerStore } from "../store";
 
 export default function Timer() {
   const {
-    timeRemaining,
-    totalTime,
+    totalDuration,
     isRunning,
     isPaused,
     currentActivity,
     activities,
     settings,
     currentSessionType,
+    getTimeRemaining,
+    checkTimerCompletion,
     startTimer,
     pauseTimer,
     resetTimer,
@@ -28,8 +29,9 @@ export default function Timer() {
     setSessionType,
     selectActivity,
     createActivity,
-    tick,
   } = useTimerStore();
+
+  const timeRemaining = getTimeRemaining();
 
   const [isEditingMinutes, setIsEditingMinutes] = useState(false);
   const [isEditingSeconds, setIsEditingSeconds] = useState(false);
@@ -50,8 +52,9 @@ export default function Timer() {
   };
 
   const getProgress = (): number => {
-    if (totalTime === 0) return 0;
-    return ((totalTime - timeRemaining) / totalTime) * 100;
+    if (totalDuration === 0) return 0;
+    const progress = ((totalDuration - timeRemaining) / totalDuration) * 100;
+    return progress;
   };
 
   const getTimerState = () => {
@@ -61,22 +64,35 @@ export default function Timer() {
     return "idle";
   };
 
-  // Timer interval effect
+  // Timer update and completion check effect
+  const [, forceUpdate] = useState({});
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let animationId: number;
+
+    const updateTimer = () => {
+      if (isRunning) {
+        // Force re-render to update computed timeRemaining
+        forceUpdate({});
+        // Check for timer completion
+        checkTimerCompletion().catch((error) => {
+          console.error("Timer completion check failed:", error);
+        });
+        // Schedule next frame
+        animationId = requestAnimationFrame(updateTimer);
+      }
+    };
 
     if (isRunning) {
-      interval = setInterval(() => {
-        tick();
-      }, 1000);
+      animationId = requestAnimationFrame(updateTimer);
     }
 
     return () => {
-      if (interval) {
-        clearInterval(interval);
+      if (animationId) {
+        cancelAnimationFrame(animationId);
       }
     };
-  }, [isRunning, tick]);
+  }, [isRunning, checkTimerCompletion]);
 
   // Track previous time remaining to detect completion
   const prevTimeRemainingRef = useRef<number>(timeRemaining);
@@ -94,9 +110,16 @@ export default function Timer() {
 
   // Reset hasBeenStarted when time is manually changed
   useEffect(() => {
-    // Reset when totalTime changes (manual time setting)
+    // Reset when totalDuration changes (manual time setting)
     setHasBeenStarted(false);
-  }, [totalTime]);
+  }, [totalDuration]);
+
+  // Ensure timer starts properly by tracking actual start state
+  useEffect(() => {
+    if (isRunning && timeRemaining < totalDuration) {
+      setHasBeenStarted(true);
+    }
+  }, [isRunning, timeRemaining, totalDuration]);
 
   // Detect timer completion
   useEffect(() => {
@@ -183,14 +206,14 @@ export default function Timer() {
     setHasBeenStarted(false);
   };
 
-  const handleCreateActivity = () => {
+  const handleCreateActivity = async () => {
     const trimmedName = newActivityName.trim();
     if (trimmedName) {
       const existingActivity = activities.find((a) => a.name === trimmedName);
       if (existingActivity) {
         selectActivity(existingActivity);
       } else {
-        createActivity(trimmedName);
+        await createActivity(trimmedName);
       }
       // Reset to default time when creating/selecting new activity
       const defaultTimeMs = settings.defaultWorkTime * 60 * 1000;
@@ -210,14 +233,14 @@ export default function Timer() {
   const handleMinutesClick = () => {
     if (!isEditable) return;
     setIsEditingMinutes(true);
-    setEditingMinutes(Math.floor(totalTime / 60000).toString());
+    setEditingMinutes(Math.floor(totalDuration / 60000).toString());
   };
 
   const handleSecondsClick = () => {
     if (!isEditable) return;
     setIsEditingSeconds(true);
     setEditingSeconds(
-      Math.floor((totalTime % 60000) / 1000)
+      Math.floor((totalDuration % 60000) / 1000)
         .toString()
         .padStart(2, "0")
     );
@@ -225,7 +248,7 @@ export default function Timer() {
 
   const handleMinutesSave = () => {
     const mins = parseInt(editingMinutes) || 0;
-    const currentSeconds = Math.floor((totalTime % 60000) / 1000);
+    const currentSeconds = Math.floor((totalDuration % 60000) / 1000);
     if (mins >= 0 && mins <= 120) {
       const newTimeMs = (mins * 60 + currentSeconds) * 1000;
       // Allow setting to 0, even though it can't be started
@@ -238,7 +261,7 @@ export default function Timer() {
 
   const handleSecondsSave = () => {
     const secs = parseInt(editingSeconds) || 0;
-    const currentMinutes = Math.floor(totalTime / 60000);
+    const currentMinutes = Math.floor(totalDuration / 60000);
 
     // Ensure seconds are within valid range
     if (secs >= 0 && secs <= 59) {

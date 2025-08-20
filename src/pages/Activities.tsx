@@ -53,7 +53,7 @@ export default function Activities() {
   const [newActivityName, setNewActivityName] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const handleCreateActivity = () => {
+  const handleCreateActivity = async () => {
     const trimmedName = newActivityName.trim();
     if (trimmedName) {
       const existingActivity = activities.find((a) => a.name === trimmedName);
@@ -61,7 +61,7 @@ export default function Activities() {
         // If activity already exists, just select it
         selectActivity(existingActivity);
       } else {
-        createActivity(trimmedName);
+        await createActivity(trimmedName);
       }
       setNewActivityName("");
     }

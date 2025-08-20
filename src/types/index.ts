@@ -1,19 +1,47 @@
 export interface Activity {
-  id: string;
+  id?: number; // Optional for creation, required after save
   name: string;
-  totalTime: number;
-  sessions: TimerSession[];
   createdAt: Date;
-  updatedAt: Date;
+  lastUsed: Date;
+  isArchived: boolean;
 }
 
-export interface TimerSession {
-  id: string;
-  activityId: string;
+export interface Session {
+  id?: number; // Optional for creation, required after save
+  activityId: number;
+  activityName: string;
+  type: 'work' | 'break';
+  duration: number; // in seconds for database, milliseconds for UI
   startTime: Date;
   endTime?: Date;
-  duration: number;
+  dateKey: string; // YYYY-MM-DD format for efficient querying
   completed: boolean;
+  metadata?: {
+    notes?: string;
+    tags?: string[];
+    productivity?: number; // 1-5 scale
+    interruptions?: number;
+  };
+}
+
+export interface AudioFile {
+  id?: number;
+  name: string;
+  data: string; // base64 encoded audio data
+  size: number;
+  mimeType: string;
+  createdAt: Date;
+}
+
+export interface DailyStats {
+  dateKey: string; // Primary key, YYYY-MM-DD format
+  date: Date;
+  totalWorkTime: number; // in seconds
+  totalBreakTime: number; // in seconds
+  sessionsCompleted: number;
+  activitiesUsed: number;
+  productivity: number; // calculated average productivity
+  lastUpdated: Date;
 }
 
 export interface AppSettings {

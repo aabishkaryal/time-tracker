@@ -1,4 +1,4 @@
-import { cn } from '../lib/utils';
+import { cn } from "../lib/utils";
 
 interface CircularProgressProps {
   progress: number;
@@ -6,39 +6,42 @@ interface CircularProgressProps {
   strokeWidth?: number;
   className?: string;
   children?: React.ReactNode;
-  state?: 'idle' | 'running' | 'paused' | 'completed';
+  state?: "idle" | "running" | "paused" | "completed";
   isBreakMode?: boolean;
 }
 
-export function CircularProgress({ 
-  progress, 
-  size = 200, 
-  strokeWidth = 8, 
+export function CircularProgress({
+  progress,
+  size = 200,
+  strokeWidth = 8,
   className,
   children,
-  state = 'idle',
-  isBreakMode = false
+  state = "idle",
+  isBreakMode = false,
 }: CircularProgressProps) {
+  // Determine progress color based on state and mode
+  const getProgressColorClass = () => {
+    switch (state) {
+      case "running":
+        return isBreakMode ? "text-warning" : "text-primary";
+      case "paused":
+        return "text-warning";
+      case "completed":
+        return isBreakMode ? "text-warning" : "text-muted-foreground";
+      default:
+        return "text-muted-foreground/40";
+    }
+  };
+
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (progress / 100) * circumference;
 
-  // Determine progress color based on state and mode
-  const getProgressColorClass = () => {
-    switch (state) {
-      case 'running':
-        return isBreakMode ? 'text-warning' : 'text-primary';
-      case 'paused':
-        return 'text-warning';
-      case 'completed':
-        return isBreakMode ? 'text-warning' : 'text-muted-foreground';
-      default:
-        return 'text-border';
-    }
-  };
-
   return (
-    <div className={cn("relative inline-flex", className)} style={{ width: size, height: size }}>
+    <div
+      className={cn("relative inline-flex", className)}
+      style={{ width: size, height: size }}
+    >
       <svg
         className="transform -rotate-90"
         width={size}
@@ -52,7 +55,7 @@ export function CircularProgress({
           r={radius}
           fill="none"
           stroke="currentColor"
-          className="text-border"
+          className="text-muted-foreground/30"
           strokeWidth={strokeWidth}
         />
         {/* Progress circle */}
@@ -62,7 +65,10 @@ export function CircularProgress({
           r={radius}
           fill="none"
           stroke="currentColor"
-          className={cn('transition-all duration-1000 ease-out', getProgressColorClass())}
+          className={cn(
+            "transition-all duration-300 ease-out",
+            getProgressColorClass()
+          )}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
