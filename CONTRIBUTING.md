@@ -5,7 +5,8 @@ Thank you for your interest in contributing to Time Tracker! This guide will hel
 ## 🚀 Quick Setup
 
 ### Prerequisites
-- **Node.js** 18+ and npm
+
+- **Node.js** 20+ and npm
 - **Git** for version control
 - Modern browser with IndexedDB support for testing
 
@@ -13,7 +14,7 @@ Thank you for your interest in contributing to Time Tracker! This guide will hel
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/time-tracker.git
+git clone https://github.com/aabishkaryal/time-tracker.git
 cd time-tracker
 
 # Install dependencies
@@ -23,7 +24,7 @@ npm install
 npm run dev
 ```
 
-The development server runs at `http://localhost:5174`
+The development server runs at `http://localhost:5173`
 
 ### Available Scripts
 
@@ -40,8 +41,8 @@ npm run lint     # Run ESLint
 
 - **Frontend Framework**: React 19 with TypeScript
 - **Build Tool**: Vite with SWC for fast compilation
-- **Routing**: React Router v7 with file-based routing
-- **Styling**: Tailwind CSS v4 + Radix UI primitives
+- **Routing**: React Router v7
+- **Styling**: Tailwind CSS v4 + Shadcn UI primitives
 - **State Management**: Zustand with persistence middleware
 - **Database**: IndexedDB via Dexie.js for client-side storage
 - **Icons**: Lucide React
@@ -82,26 +83,8 @@ src/
 
 ### State Management Architecture
 
-**Zustand Store Structure**:
-```typescript
-interface TimerStore {
-  // Timer State
-  startTime: number | null      // Timestamp-based persistence
-  totalDuration: number         // Session duration in milliseconds
-  isRunning: boolean           // Current timer state
-  isPaused: boolean           
-  justCompleted: boolean       // Completion state flag
-  currentSessionType: "work" | "break"
-  
-  // Application Data
-  currentActivity: Activity | null
-  activities: Activity[]       // Stored in memory, persisted to IndexedDB
-  sessions: Session[]         // Recent sessions cache
-  settings: Settings          // User preferences
-}
-```
-
 **Persistence Strategy**:
+
 - **Fast Access**: Timer state, current activity, and settings in localStorage
 - **Large Data**: Activities and sessions in IndexedDB via Dexie
 - **Hybrid Approach**: Recent data cached in memory, full history in IndexedDB
@@ -113,46 +96,47 @@ interface TimerStore {
 ```typescript
 // Activities table
 interface Activity {
-  id?: number
-  name: string
-  createdAt: Date
-  lastUsed: Date
-  isArchived: boolean
+  id?: number;
+  name: string;
+  createdAt: Date;
+  lastUsed: Date;
+  isArchived: boolean;
 }
 
-// Sessions table  
+// Sessions table
 interface Session {
-  id?: number
-  activityId: number
-  activityName: string
-  type: "work" | "break"
-  duration: number        // in seconds
-  startTime: Date
-  endTime?: Date
-  dateKey: string        // YYYY-MM-DD for efficient querying
-  completed: boolean
+  id?: number;
+  activityId: number;
+  activityName: string;
+  type: "work" | "break";
+  duration: number; // in seconds
+  startTime: Date;
+  endTime?: Date;
+  dateKey: string; // YYYY-MM-DD for efficient querying
+  completed: boolean;
   metadata?: {
-    notes?: string
-    tags?: string[]
-    productivity?: number
-    interruptions?: number
-  }
+    notes?: string;
+    tags?: string[];
+    productivity?: number;
+    interruptions?: number;
+  };
 }
 
 // Daily stats for analytics
 interface DailyStats {
-  dateKey: string       // Primary key: YYYY-MM-DD
-  date: Date
-  totalWorkTime: number
-  totalBreakTime: number
-  sessionsCompleted: number
-  activitiesUsed: number
-  productivity: number
-  lastUpdated: Date
+  dateKey: string; // Primary key: YYYY-MM-DD
+  date: Date;
+  totalWorkTime: number;
+  totalBreakTime: number;
+  sessionsCompleted: number;
+  activitiesUsed: number;
+  productivity: number;
+  lastUpdated: Date;
 }
 ```
 
 **Database Indexes**:
+
 - Activities: `name`, `lastUsed`, `isArchived`
 - Sessions: `activityId`, `dateKey`, `completed`, `startTime`
 - DailyStats: `dateKey` (primary)
@@ -161,25 +145,10 @@ interface DailyStats {
 
 ### Design System
 
-- **Component Library**: Radix UI for accessibility primitives
+- **Component Library**: Shadcn UI for accessibility primitives
 - **Styling**: Tailwind CSS utility classes
-- **Color Scheme**: CSS custom properties for theme support
 - **Typography**: System font stack for performance
 - **Spacing**: Consistent 4px base unit (Tailwind default)
-
-### Component Patterns
-
-1. **Compound Components**: For complex UI like Select, RadioGroup
-2. **Render Props**: For reusable logic (timers, data fetching)
-3. **Custom Hooks**: For shared stateful logic
-4. **Forward Refs**: For proper ref handling in UI components
-
-### Accessibility Requirements
-
-- **Keyboard Navigation**: All interactive elements accessible via keyboard
-- **Screen Readers**: Proper ARIA labels and semantic HTML
-- **Focus Management**: Visible focus indicators and logical tab order
-- **Color Contrast**: WCAG AA compliance for text and UI elements
 
 ## 🔧 Development Workflow
 
@@ -195,11 +164,12 @@ interface DailyStats {
 ### Commit Messages
 
 Use conventional commits format:
+
 ```
 type(scope): description
 
 feat(timer): add break mode toggle button
-fix(database): resolve IndexedDB compound index errors  
+fix(database): resolve IndexedDB compound index errors
 docs(readme): update installation instructions
 style(ui): improve button hover states
 refactor(store): simplify session persistence logic
@@ -215,11 +185,13 @@ refactor(store): simplify session persistence logic
 ### Testing Strategy
 
 **Current Testing Setup**:
+
 - **Type Safety**: TypeScript strict mode
 - **Linting**: ESLint with React/TypeScript rules
 - **Manual Testing**: Development server with hot reload
 
 **Future Testing Plans**:
+
 - **Unit Tests**: Vitest for utility functions and hooks
 - **Integration Tests**: React Testing Library for components
 - **E2E Tests**: Playwright for user workflows
@@ -227,24 +199,28 @@ refactor(store): simplify session persistence logic
 ## 🐛 Bug Reports
 
 ### Before Reporting
+
 1. **Search existing issues** to avoid duplicates
 2. **Test in latest version** to ensure bug still exists
 3. **Check browser compatibility** (Chrome, Firefox, Safari, Edge)
 
 ### Bug Report Template
+
 ```markdown
 **Describe the bug**
 Clear description of what went wrong
 
 **Steps to reproduce**
+
 1. Go to '...'
 2. Click on '...'
 3. See error
 
-**Expected behavior** 
+**Expected behavior**
 What should have happened
 
 **Environment**
+
 - OS: [e.g. macOS 14.0]
 - Browser: [e.g. Chrome 120.0]
 - Version: [e.g. latest main branch]
@@ -256,6 +232,7 @@ Screenshots, console errors, or other relevant information
 ## 💡 Feature Requests
 
 ### Feature Request Template
+
 ```markdown
 **Problem Statement**
 What problem does this solve?
@@ -273,12 +250,15 @@ Technical considerations or constraints
 ## 📦 Release Process
 
 ### Versioning
+
 We follow [Semantic Versioning](https://semver.org/):
+
 - **MAJOR**: Breaking changes
 - **MINOR**: New features (backwards compatible)
 - **PATCH**: Bug fixes (backwards compatible)
 
 ### Release Checklist
+
 - [ ] Update version in `package.json`
 - [ ] Update CHANGELOG.md
 - [ ] Test build process
@@ -288,6 +268,7 @@ We follow [Semantic Versioning](https://semver.org/):
 ## 🏷️ Labels and Project Management
 
 ### Issue Labels
+
 - `bug` - Something isn't working
 - `enhancement` - New feature or improvement
 - `documentation` - Documentation updates
@@ -296,6 +277,7 @@ We follow [Semantic Versioning](https://semver.org/):
 - `priority: high/medium/low` - Priority levels
 
 ### Project Boards
+
 - **Backlog**: Planned features and improvements
 - **In Progress**: Currently being worked on
 - **Review**: Ready for code review
@@ -304,12 +286,14 @@ We follow [Semantic Versioning](https://semver.org/):
 ## 🤝 Code Review Guidelines
 
 ### For Authors
+
 - **Keep PRs small** and focused on single concern
 - **Write clear descriptions** explaining the change
 - **Include screenshots** for UI changes
 - **Test thoroughly** before requesting review
 
 ### For Reviewers
+
 - **Be constructive** and helpful in feedback
 - **Focus on code quality** and maintainability
 - **Check for accessibility** and performance implications
@@ -318,6 +302,7 @@ We follow [Semantic Versioning](https://semver.org/):
 ## 📚 Resources
 
 ### Learning Resources
+
 - [React Documentation](https://react.dev)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [Tailwind CSS Guide](https://tailwindcss.com/docs)
@@ -325,17 +310,17 @@ We follow [Semantic Versioning](https://semver.org/):
 - [Dexie.js Guide](https://dexie.org/docs/)
 
 ### Design Resources
-- [Radix UI Components](https://www.radix-ui.com/primitives)
+
+- [Shadcn UI Components](https://ui.shadcn.com)
 - [Lucide Icon Library](https://lucide.dev/)
-- [Tailwind UI Patterns](https://tailwindui.com/)
 
 ---
 
 ## Questions?
 
 If you have questions about contributing, feel free to:
+
 - **Open a discussion** on GitHub
-- **Join our community** (if applicable)
 - **Reach out** via the contact methods in README
 
 Thank you for contributing to Time Tracker! 🎉
