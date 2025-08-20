@@ -73,8 +73,11 @@ interface TimerStore {
   createActivity: (name: string) => Promise<void>;
   selectActivity: (activity: Activity | null) => void;
   deleteActivity: (id: string) => void;
+  archiveActivity: (id: string) => Promise<void>;
+  unarchiveActivity: (id: string) => Promise<void>;
   clearAllActivities: () => void;
   editActivity: (id: string, name: string) => void;
+  getArchivedActivities: () => Promise<Activity[]>;
 
   // Settings actions
   updateSettings: (newSettings: Partial<Settings>) => void;
@@ -344,6 +347,45 @@ export const useTimerStore = create<TimerStore>()(
         }));
       },
 
+      archiveActivity: async (id: string) => {
+        try {
+          await databaseService.updateActivity(parseInt(id), { isArchived: true });
+          set((state) => ({
+            activities: state.activities.filter((a) => a.id !== id),
+            currentActivity:
+              state.currentActivity?.id === id ? null : state.currentActivity,
+          }));
+        } catch (error) {
+          console.error('Failed to archive activity:', error);
+        }
+      },
+
+      unarchiveActivity: async (id: string) => {
+        try {
+          await databaseService.updateActivity(parseInt(id), { isArchived: false });
+          // Reload activities to show the unarchived activity
+          await get().loadActivitiesFromIndexedDB();
+        } catch (error) {
+          console.error('Failed to unarchive activity:', error);
+        }
+      },
+
+      getArchivedActivities: async () => {
+        try {
+          const allActivities = await databaseService.getAllActivities();
+          return allActivities
+            .filter(activity => activity.isArchived)
+            .map(activity => ({
+              id: activity.id!.toString(),
+              name: activity.name,
+              createdAt: activity.createdAt,
+            }));
+        } catch (error) {
+          console.error('Failed to get archived activities:', error);
+          return [];
+        }
+      },
+
       clearAllActivities: () => {
         set({ activities: [], currentActivity: null });
       },
@@ -489,7 +531,6 @@ export const useTimerStore = create<TimerStore>()(
           }));
           
           set({ activities });
-          console.log(`Loaded ${activities.length} activities from IndexedDB`);
         } catch (error) {
           console.error('Failed to load activities from IndexedDB:', error);
         }
@@ -503,21 +544,24 @@ export const useTimerStore = create<TimerStore>()(
           startDate.setDate(endDate.getDate() - 30);
           
           const dbSessions = await databaseService.getCompletedSessionsInRange(startDate, endDate);
-          const sessions: Session[] = dbSessions.map(session => ({
-            id: session.id!.toString(),
-            activityId: session.activityId?.toString() || null,
-            activityName: session.activityName,
-            type: session.type,
-            duration: session.duration * 1000, // Convert from seconds to milliseconds
-            startTime: session.startTime,
-            endTime: session.endTime || session.startTime,
-            completed: session.completed,
-          }));
+          const sessions: Session[] = dbSessions
+            .filter(session => session && session.id) // Filter out invalid sessions
+            .map(session => ({
+              id: session.id!.toString(),
+              activityId: session.activityId?.toString() || null,
+              activityName: session.activityName || "Unknown Activity",
+              type: session.type || "work",
+              duration: (session.duration || 0) * 1000, // Convert from seconds to milliseconds
+              startTime: session.startTime || new Date(),
+              endTime: session.endTime || session.startTime || new Date(),
+              completed: Boolean(session.completed),
+            }));
           
           set({ sessions });
-          console.log(`Loaded ${sessions.length} sessions from IndexedDB`);
         } catch (error) {
           console.error('Failed to load sessions from IndexedDB:', error);
+          // Don't fail completely, just set empty sessions
+          set({ sessions: [] });
         }
       },
     }),
@@ -568,7 +612,6 @@ const loadDataFromIndexedDB = async (): Promise<void> => {
       store.loadActivitiesFromIndexedDB(),
       store.loadSessionsFromIndexedDB()
     ]);
-    console.log('Data loaded from IndexedDB');
   } catch (error) {
     console.error('Failed to load data from IndexedDB:', error);
   }

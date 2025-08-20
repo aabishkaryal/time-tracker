@@ -1,5 +1,5 @@
 import { Coffee, Pause, Play, RotateCcw, Square } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { CircularProgress } from "../components/CircularProgress";
 import {
   Select,
@@ -51,12 +51,6 @@ export default function Timer() {
     };
   };
 
-  const getProgress = (): number => {
-    if (totalDuration === 0) return 0;
-    const progress = ((totalDuration - timeRemaining) / totalDuration) * 100;
-    return progress;
-  };
-
   const getTimerState = () => {
     if (timeRemaining === 0 && hasBeenStarted) return "completed";
     if (isRunning) return "running";
@@ -65,15 +59,16 @@ export default function Timer() {
   };
 
   // Timer update and completion check effect
-  const [, forceUpdate] = useState({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_, setUpdateTick] = useReducer((x) => x + 1, 0);
 
   useEffect(() => {
     let animationId: number;
 
     const updateTimer = () => {
       if (isRunning) {
-        // Force re-render to update computed timeRemaining
-        forceUpdate({});
+        // Force re-render by incrementing tick
+        setUpdateTick();
         // Check for timer completion
         checkTimerCompletion().catch((error) => {
           console.error("Timer completion check failed:", error);
@@ -154,7 +149,14 @@ export default function Timer() {
   ]);
 
   const { minutes, seconds } = formatTime(timeRemaining);
-  const progress = getProgress();
+
+  // Make progress calculation reactive to updateTick
+  const progress = useMemo(() => {
+    if (totalDuration === 0) return 0;
+    const progress = ((totalDuration - timeRemaining) / totalDuration) * 100;
+    return progress;
+  }, [timeRemaining, totalDuration]);
+
   const timerState = getTimerState();
 
   const stateText = {

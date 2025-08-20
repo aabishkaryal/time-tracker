@@ -6,8 +6,12 @@ import {
   Trash2,
   Clock,
   TrendingUp,
+  Archive,
+  ArchiveRestore,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -27,10 +31,14 @@ export default function Activities() {
     selectActivity,
     createActivity,
     deleteActivity,
+    archiveActivity,
+    unarchiveActivity,
+    getArchivedActivities,
     editActivity,
     clearAllActivities,
     getTodaysSessions,
     getTodaysActivityStats,
+    loadActivitiesFromIndexedDB,
   } = useTimerStore();
 
   const todaysSessions = getTodaysSessions();
@@ -52,6 +60,8 @@ export default function Activities() {
   const [editingName, setEditingName] = useState("");
   const [newActivityName, setNewActivityName] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [archivedActivities, setArchivedActivities] = useState<Array<{id: string, name: string, createdAt: Date}>>([]);
+  const [showArchived, setShowArchived] = useState(false);
 
   const handleCreateActivity = async () => {
     const trimmedName = newActivityName.trim();
@@ -94,6 +104,32 @@ export default function Activities() {
   const handleClearActivities = () => {
     clearAllActivities();
     setShowClearConfirm(false);
+  };
+
+  // Load archived activities on component mount and refresh activities
+  useEffect(() => {
+    const loadData = async () => {
+      // Refresh activities from IndexedDB
+      await loadActivitiesFromIndexedDB();
+      // Load archived activities
+      const archived = await getArchivedActivities();
+      setArchivedActivities(archived);
+    };
+    loadData();
+  }, [getArchivedActivities, loadActivitiesFromIndexedDB]);
+
+  const handleArchiveActivity = async (activityId: string) => {
+    await archiveActivity(activityId);
+    // Refresh archived activities list
+    const archived = await getArchivedActivities();
+    setArchivedActivities(archived);
+  };
+
+  const handleUnarchiveActivity = async (activityId: string) => {
+    await unarchiveActivity(activityId);
+    // Refresh archived activities list
+    const archived = await getArchivedActivities();
+    setArchivedActivities(archived);
   };
 
   return (
@@ -241,14 +277,25 @@ export default function Activities() {
                                 onClick={() =>
                                   startEditingActivity(activity.id, activity.name)
                                 }
+                                title="Edit activity name"
                               >
                                 <Edit3 className="w-3 h-3" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                onClick={() => handleArchiveActivity(activity.id)}
+                                className="text-warning hover:text-warning"
+                                title="Archive activity"
+                              >
+                                <Archive className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 onClick={() => deleteActivity(activity.id)}
                                 className="text-destructive hover:text-destructive"
+                                title="Delete activity permanently"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </Button>
@@ -306,6 +353,71 @@ export default function Activities() {
               )}
             </CardContent>
           </Card>
+
+          {/* Archived Activities */}
+          {archivedActivities.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle 
+                  className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => setShowArchived(!showArchived)}
+                >
+                  {showArchived ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                  <Archive className="w-5 h-5" />
+                  Archived Activities ({archivedActivities.length})
+                </CardTitle>
+                <CardDescription>
+                  Activities that have been archived and are hidden from the main timer
+                </CardDescription>
+              </CardHeader>
+              {showArchived && (
+                <CardContent className="space-y-4">
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {archivedActivities.map((activity) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-center justify-between p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-muted-foreground">
+                              {activity.name}
+                            </span>
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
+                              Archived
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Created {new Date(activity.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleUnarchiveActivity(activity.id)}
+                            className="text-primary hover:text-primary hover:bg-primary/10"
+                            title="Restore activity"
+                          >
+                            <ArchiveRestore className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => deleteActivity(activity.id)}
+                            className="text-destructive hover:text-destructive"
+                            title="Delete permanently"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Today's Summary */}
           <Card>

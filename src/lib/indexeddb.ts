@@ -12,18 +12,20 @@ export class TimeTrackerDatabase extends Dexie {
   constructor() {
     super("TimeTrackerDB");
 
+    // Version 1 - original schema
     this.version(1).stores({
-      // Activities table with indexes
       activities: "++id, name, createdAt, lastUsed, isArchived",
-
-      // Sessions table with compound indexes for efficient querying
       sessions:
         "++id, activityId, startTime, dateKey, completed, type, [activityId+dateKey], [completed+dateKey]",
-
-      // Audio files table
       audioFiles: "++id, name, size, createdAt",
+      dailyStats: "dateKey, date, lastUpdated",
+    });
 
-      // Daily stats table with dateKey as primary key
+    // Version 2 - removed compound indexes to fix IDBKeyRange issues
+    this.version(2).stores({
+      activities: "++id, name, createdAt, lastUsed, isArchived",
+      sessions: "++id, activityId, startTime, dateKey, completed, type",
+      audioFiles: "++id, name, size, createdAt",
       dailyStats: "dateKey, date, lastUpdated",
     });
 
@@ -172,11 +174,11 @@ export class TimeTrackerDatabase extends Dexie {
 
   // Activity-specific methods
   async getActiveActivities(): Promise<Activity[]> {
-    return this.activities
-      .where("isArchived")
-      .equals(0) // Use 0 for false in IndexedDB
-      .reverse()
-      .sortBy("lastUsed");
+    // Get all activities and filter manually to handle missing/boolean isArchived fields
+    const allActivities = await this.activities.toArray();
+    return allActivities
+      .filter(activity => !activity.isArchived) // Handle both false and undefined
+      .sort((a, b) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime());
   }
 
   async updateActivityUsage(activityId: number): Promise<void> {
@@ -209,13 +211,26 @@ export class TimeTrackerDatabase extends Dexie {
     startDate: Date,
     endDate: Date
   ): Promise<Session[]> {
-    const startKey = formatDateKey(startDate);
-    const endKey = formatDateKey(endDate);
+    try {
+      const startKey = formatDateKey(startDate);
+      const endKey = formatDateKey(endDate);
 
-    return this.sessions
-      .where("[completed+dateKey]")
-      .between([true, startKey], [true, endKey], true, true)
-      .toArray();
+      // Get all sessions first, then filter - this avoids any compound index issues
+      const allSessions = await this.sessions.toArray();
+      
+      return allSessions.filter(session => {
+        return (
+          session.completed === true &&
+          session.dateKey &&
+          session.dateKey >= startKey &&
+          session.dateKey <= endKey
+        );
+      });
+    } catch (error) {
+      console.error('Error in getCompletedSessionsInRange:', error);
+      // Return empty array on error to prevent app crash
+      return [];
+    }
   }
 
   // Daily stats methods
@@ -316,11 +331,11 @@ export class TimeTrackerDatabase extends Dexie {
       const oneDayAgo = new Date();
       oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-      const incompleteSessions = await this.sessions
-        .where("completed")
-        .equals(0) // Use 0 for false in IndexedDB
-        .and((session) => session.startTime < oneDayAgo)
-        .toArray();
+      // Get all sessions and filter manually to avoid IDBKeyRange issues
+      const allSessions = await this.sessions.toArray();
+      const incompleteSessions = allSessions.filter(
+        session => session.completed === false && session.startTime < oneDayAgo
+      );
 
       if (incompleteSessions.length > 0) {
         await this.sessions.bulkDelete(incompleteSessions.map((s) => s.id!));

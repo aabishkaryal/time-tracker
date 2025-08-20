@@ -1,22 +1,22 @@
 import {
-  Activity,
   Bell,
-  Check,
   Clock,
-  Edit3,
   Monitor,
   Moon,
   Palette,
   RotateCcw,
   Settings as SettingsIcon,
+  Square,
   Sun,
   TestTube,
   Trash2,
   Volume2,
   VolumeX,
-  Square,
+  Database,
+  AlertTriangle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -35,46 +35,66 @@ import {
   stopNotificationSound,
 } from "../lib/notifications";
 import { useTimerStore } from "../store";
-import { toast } from "sonner";
+import { databaseService } from "../lib/database-service";
 
 export default function Settings() {
   const {
     settings,
-    activities,
     sessions,
     updateSettings,
     resetSettings,
     testNotification,
-    deleteActivity,
-    editActivity,
-    clearAllActivities,
     clearAllSessions,
+    clearAllActivities,
   } = useTimerStore();
 
-  const [editingActivity, setEditingActivity] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState("");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [showClearActivitiesConfirm, setShowClearActivitiesConfirm] =
-    useState(false);
+  const [showClearDataConfirm, setShowClearDataConfirm] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(
     getNotificationPermission()
   );
+  
+  // Local state for time inputs to allow temporary invalid states while typing
+  const [workTimeInput, setWorkTimeInput] = useState(settings.defaultWorkTime.toString());
+  const [breakTimeInput, setBreakTimeInput] = useState(settings.defaultBreakTime.toString());
+  
+  // Sync local state when settings change (e.g., from reset)
+  useEffect(() => {
+    setWorkTimeInput(settings.defaultWorkTime.toString());
+    setBreakTimeInput(settings.defaultBreakTime.toString());
+  }, [settings.defaultWorkTime, settings.defaultBreakTime]);
 
   const handleSettingChange = (key: keyof typeof settings, value: unknown) => {
     updateSettings({ [key]: value });
   };
 
   const handleWorkTimeChange = (value: string) => {
-    const minutes = parseInt(value);
+    // Always update local input state to allow typing
+    setWorkTimeInput(value);
+  };
+
+  const handleWorkTimeBlur = () => {
+    const minutes = parseInt(workTimeInput);
     if (!isNaN(minutes) && minutes >= 1 && minutes <= 120) {
       handleSettingChange("defaultWorkTime", minutes);
+    } else {
+      // Reset to current setting if invalid
+      setWorkTimeInput(settings.defaultWorkTime.toString());
     }
   };
 
   const handleBreakTimeChange = (value: string) => {
-    const minutes = parseInt(value);
+    // Always update local input state to allow typing
+    setBreakTimeInput(value);
+  };
+
+  const handleBreakTimeBlur = () => {
+    const minutes = parseInt(breakTimeInput);
     if (!isNaN(minutes) && minutes >= 1 && minutes <= 60) {
       handleSettingChange("defaultBreakTime", minutes);
+    } else {
+      // Reset to current setting if invalid
+      setBreakTimeInput(settings.defaultBreakTime.toString());
     }
   };
 
@@ -95,35 +115,14 @@ export default function Settings() {
     testNotification();
   };
 
-  const startEditingActivity = (activityId: string, currentName: string) => {
-    setEditingActivity(activityId);
-    setEditingName(currentName);
-  };
-
-  const saveActivityEdit = () => {
-    if (editingActivity && editingName.trim()) {
-      editActivity(editingActivity, editingName.trim());
-    }
-    setEditingActivity(null);
-    setEditingName("");
-  };
-
-  const cancelEdit = () => {
-    setEditingActivity(null);
-    setEditingName("");
-  };
-
   const handleResetSettings = () => {
     resetSettings();
     setShowResetConfirm(false);
   };
 
-  const handleClearActivities = () => {
-    clearAllActivities();
-    setShowClearActivitiesConfirm(false);
-  };
-
-  const handleCustomAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomAudioUpload = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -134,7 +133,7 @@ export default function Settings() {
     }
 
     // Validate file type
-    if (!file.type.startsWith('audio/')) {
+    if (!file.type.startsWith("audio/")) {
       toast.error("Please select a valid audio file");
       return;
     }
@@ -157,6 +156,36 @@ export default function Settings() {
       customAudioName: null,
       soundType: "bell", // Reset to default
     });
+  };
+
+  const handleClearAllData = async () => {
+    try {
+      // Clear IndexedDB
+      await databaseService.clearAllData();
+      
+      // Clear Zustand store data
+      clearAllActivities();
+      clearAllSessions();
+      
+      // Clear localStorage (Zustand persist will handle this when store is cleared)
+      localStorage.removeItem('timer-storage');
+      
+      // Reset settings to defaults but keep current theme
+      const currentTheme = settings.theme;
+      resetSettings();
+      updateSettings({ theme: currentTheme });
+      
+      toast.success('All data cleared successfully!');
+      setShowClearDataConfirm(false);
+      
+      // Reload the page to ensure clean state
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to clear all data:', error);
+      toast.error('Failed to clear data. Please try again.');
+    }
   };
 
   return (
@@ -196,8 +225,15 @@ export default function Settings() {
                     type="number"
                     min="1"
                     max="120"
-                    value={settings.defaultWorkTime}
+                    value={workTimeInput}
                     onChange={(e) => handleWorkTimeChange(e.target.value)}
+                    onBlur={handleWorkTimeBlur}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleWorkTimeBlur();
+                        e.currentTarget.blur();
+                      }
+                    }}
                     className="w-full"
                   />
                   <p className="text-sm text-muted-foreground">
@@ -213,8 +249,15 @@ export default function Settings() {
                     type="number"
                     min="1"
                     max="60"
-                    value={settings.defaultBreakTime}
+                    value={breakTimeInput}
                     onChange={(e) => handleBreakTimeChange(e.target.value)}
+                    onBlur={handleBreakTimeBlur}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleBreakTimeBlur();
+                        e.currentTarget.blur();
+                      }
+                    }}
                     className="w-full"
                   />
                   <p className="text-sm text-muted-foreground">
@@ -303,9 +346,9 @@ export default function Settings() {
                   <Label>Sound Type</Label>
                   <RadioGroup
                     value={settings.soundType}
-                    onValueChange={(value: "bell" | "chime" | "gentle" | "digital" | "custom") =>
-                      handleSettingChange("soundType", value)
-                    }
+                    onValueChange={(
+                      value: "bell" | "chime" | "gentle" | "digital" | "custom"
+                    ) => handleSettingChange("soundType", value)}
                     className="space-y-2"
                   >
                     <div className="flex items-center space-x-2">
@@ -382,7 +425,7 @@ export default function Settings() {
                   <TestTube className="w-4 h-4" />
                   Test Notification
                 </Button>
-                
+
                 {settings.notificationType === "sound" && (
                   <Button
                     onClick={stopNotificationSound}
@@ -463,131 +506,6 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Activity Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5" />
-                Activity Management
-              </CardTitle>
-              <CardDescription>
-                Manage your saved activities and data
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {activities.length > 0 ? (
-                <>
-                  <div className="space-y-2">
-                    <Label>Saved Activities ({activities.length})</Label>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {activities.map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-center justify-between p-2 border rounded-md"
-                        >
-                          {editingActivity === activity.id ? (
-                            <div className="flex items-center gap-2 flex-1">
-                              <Input
-                                value={editingName}
-                                onChange={(e) => setEditingName(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") saveActivityEdit();
-                                  if (e.key === "Escape") cancelEdit();
-                                }}
-                                className="flex-1"
-                                autoFocus
-                              />
-                              <Button size="sm" onClick={saveActivityEdit}>
-                                <Check className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={cancelEdit}
-                              >
-                                ×
-                              </Button>
-                            </div>
-                          ) : (
-                            <>
-                              <span className="flex-1">{activity.name}</span>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    startEditingActivity(
-                                      activity.id,
-                                      activity.name
-                                    )
-                                  }
-                                >
-                                  <Edit3 className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => deleteActivity(activity.id)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t">
-                    {showClearActivitiesConfirm ? (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          Are you sure you want to delete all activities? This
-                          cannot be undone.
-                        </p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={handleClearActivities}
-                          >
-                            Yes, delete all
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowClearActivitiesConfirm(false)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowClearActivitiesConfirm(true)}
-                        className="flex items-center gap-2 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Clear All Activities
-                      </Button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No activities saved yet</p>
-                  <p className="text-sm">
-                    Activities will appear here as you create them
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Session History */}
           <Card>
             <CardHeader>
@@ -603,31 +521,36 @@ export default function Settings() {
               {sessions.length > 0 ? (
                 <>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {sessions.slice(-10).reverse().map((session) => (
-                      <div
-                        key={session.id}
-                        className="flex items-center justify-between p-3 border rounded-md text-sm"
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium">
-                            {session.activityName} 
-                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                              session.type === 'work' 
-                                ? 'bg-primary/10 text-primary' 
-                                : 'bg-warning/10 text-warning'
-                            }`}>
-                              {session.type}
-                            </span>
-                          </div>
-                          <div className="text-muted-foreground">
-                            {Math.floor(session.duration / 60000)}min • {' '}
-                            {new Date(session.startTime).toLocaleTimeString()}
+                    {sessions
+                      .slice(-10)
+                      .reverse()
+                      .map((session) => (
+                        <div
+                          key={session.id}
+                          className="flex items-center justify-between p-3 border rounded-md text-sm"
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium">
+                              {session.activityName}
+                              <span
+                                className={`ml-2 px-2 py-1 rounded text-xs ${
+                                  session.type === "work"
+                                    ? "bg-primary/10 text-primary"
+                                    : "bg-warning/10 text-warning"
+                                }`}
+                              >
+                                {session.type}
+                              </span>
+                            </div>
+                            <div className="text-muted-foreground">
+                              {Math.floor(session.duration / 60000)}min •{" "}
+                              {new Date(session.startTime).toLocaleTimeString()}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
-                  
+
                   <div className="pt-2 border-t">
                     <Button
                       variant="outline"
@@ -647,6 +570,68 @@ export default function Settings() {
                     Sessions will appear here as you complete timers
                   </p>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Clear All Data */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <Database className="w-5 h-5" />
+                Clear All Data
+              </CardTitle>
+              <CardDescription>
+                Permanently delete all activities, sessions, and custom settings. This cannot be undone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {showClearDataConfirm ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-destructive">
+                        Warning: This action cannot be undone
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        This will permanently delete:
+                      </p>
+                      <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                        <li>All activities and their history</li>
+                        <li>All completed timer sessions</li>
+                        <li>Custom notification sounds</li>
+                        <li>All settings (except theme preference)</li>
+                        <li>All data from browser storage</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      onClick={handleClearAllData}
+                      className="flex items-center gap-2"
+                    >
+                      <Database className="w-4 h-4" />
+                      Yes, delete everything
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowClearDataConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowClearDataConfirm(true)}
+                  className="flex items-center gap-2 text-destructive hover:text-destructive"
+                >
+                  <Database className="w-4 h-4" />
+                  Clear All Data
+                </Button>
               )}
             </CardContent>
           </Card>

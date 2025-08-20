@@ -78,6 +78,18 @@ export class DatabaseService {
     return timeTrackerDb.getActiveActivities();
   }
 
+  async getAllActivities(): Promise<Activity[]> {
+    await this.ensureInitialized();
+    return timeTrackerDb.activities.toArray();
+  }
+
+  async getArchivedActivities(): Promise<Activity[]> {
+    await this.ensureInitialized();
+    // Get all activities and filter manually to handle boolean isArchived fields
+    const allActivities = await timeTrackerDb.activities.toArray();
+    return allActivities.filter(activity => activity.isArchived === true);
+  }
+
   async updateActivityUsage(id: number): Promise<void> {
     await this.ensureInitialized();
     await timeTrackerDb.updateActivityUsage(id);

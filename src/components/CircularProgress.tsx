@@ -66,7 +66,8 @@ export function CircularProgress({
           fill="none"
           stroke="currentColor"
           className={cn(
-            "transition-all duration-300 ease-out",
+            // Only add transition when not running for smooth progress
+            state !== "running" && "transition-all duration-300 ease-out",
             getProgressColorClass()
           )}
           strokeWidth={strokeWidth}
