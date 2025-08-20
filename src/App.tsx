@@ -16,7 +16,7 @@ function App() {
   }, [applyTheme]);
 
   return (
-    <Router>
+    <Router basename={import.meta.env.PROD ? "/time-tracker/" : "/"}>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Timer />} />

@@ -1,133 +1,176 @@
 # Time Tracker - Privacy-First Pomodoro Timer
 
 ## Overview
-A local-first time tracking application built with React, TypeScript, and Tailwind CSS. All data is stored locally using localStorage and IndexedDB for maximum privacy - no backend required.
+A modern, local-first productivity timer built with React, TypeScript, and Tailwind CSS. Features persistent timers, comprehensive activity tracking, and robust data management with IndexedDB. All data is stored locally for maximum privacy - no backend required.
 
 ## Current Implementation Status
 
-### ✅ Core Timer Functionality (Complete)
-- **Pomodoro Timer**: Full-featured timer with start/pause/stop/reset controls
-- **Activity Selection**: Choose from saved activities or create new ones inline
-- **Custom Durations**: Override default times per session with inline editing
-- **Session Memory**: Custom timer durations persist until activity switching
-- **Dual Mode Support**: Work sessions (green) and break sessions (amber)
-- **Auto-Break Feature**: Optional automatic break timer after work completion
-- **Visual Progress**: Animated circular progress bar with state-based colors
-- **Completion Notifications**: Audio chimes and browser notifications
-- **Inline Editing**: Click-to-edit activity names and timer durations
-- **Keyboard Support**: Enter/Escape handling for seamless editing experience
-- **Cross-Tab Sync**: Consistent state across multiple browser tabs
-- **Responsive Design**: Works on mobile, tablet, and desktop
+### ✅ Enhanced Timer System (Complete)
+- **Persistent Timer State**: Timer survives browser refreshes and restarts using timestamp-based calculation
+- **Smart Completion Detection**: Robust completion state management with `justCompleted` flag
+- **Break/Work Toggle**: Prominent toggle button with contextual highlighting after session completion
+- **Session Type Preservation**: Time editing and reset operations maintain current mode (work/break)
+- **Visual Progress**: Smooth circular progress bar with optimized animations (no CSS conflicts during running state)
+- **Custom Time Editing**: Click-to-edit timer values with proper validation and mode preservation
+- **Auto-Break Transitions**: Seamless automatic break setup with configurable timing
+- **Completion Notifications**: Multi-format notifications (audio, browser, silent) with custom sound support
+- **Cross-Tab Persistence**: Reliable state synchronization across browser sessions
 
-### ✅ Settings & Configuration (Complete)
-- **Timer Defaults**: Configurable work (1-120 min) and break (1-60 min) durations
-- **Notification System**: 
-  - Audio notifications with pleasant double-chime sound
-  - Browser notifications with auto-dismiss
-  - Silent mode option
-  - Built-in test functionality for all notification types
-- **Theme Management**: 
-  - Light, dark, and system theme options
-  - Real-time theme switching with CSS custom properties
-  - Consistent theming across all components
-- **Activity Management**:
-  - Inline editing of activity names
-  - Delete individual activities
-  - Bulk clear all activities with confirmation
-- **Advanced Settings**:
-  - Auto-start break toggle
-  - Reset all settings to defaults
-  - Permission handling for browser notifications
-- **User Experience**:
-  - Toast notifications for errors and feedback
-  - Input validation with helpful messages
-  - Confirmation dialogs for destructive actions
+### ✅ Activity Management System (Complete)
+- **Activity CRUD**: Create, edit, delete, and organize activities
+- **Archive System**: Archive/unarchive activities with separate UI sections for organization
+- **Activity Context**: All timer operations respect the current activity selection
+- **Inline Creation**: Quick activity creation directly from timer interface
+- **Tooltips & UX**: Enhanced action buttons with helpful tooltips
+- **Today's Summary**: Real-time productivity overview with top activities and time breakdown
 
-### ⏳ Session Tracking & History (Planned)
-- **Session Recording**: Track completed work and break sessions
-- **Activity History**: Detailed logs per activity with timestamps
-- **Data Persistence**: Store session history in localStorage
-- **Session Statistics**: Basic metrics per activity and overall
+### ✅ Advanced Settings & Configuration (Complete)
+- **Smart Time Inputs**: Local state management for time inputs allowing temporary invalid states during editing
+- **Notification Customization**: Multiple notification types with custom audio file upload support
+- **Theme System**: Light/dark/system theme with real-time switching
+- **Data Management**: Clear all data functionality with confirmation dialogs
+- **UX Improvements**: Better input handling, validation feedback, and error states
+- **Auto-start Options**: Configurable automatic break timers and workflow automation
 
-### ⏳ Reports & Analytics (Planned)  
-- **Time Analytics**: Visual charts and graphs of productivity patterns
-- **Activity Breakdown**: Time spent per activity with percentages
-- **Productivity Insights**: Daily, weekly, monthly trend analysis
-- **Data Visualization**: Interactive charts using Chart.js or similar
-- **Export Functionality**: CSV/JSON export of session data
+### ✅ Session Tracking & Persistence (Complete)
+- **IndexedDB Integration**: Robust data storage using Dexie.js with proper error handling
+- **Session Recording**: Complete session history with activity correlation and timestamps
+- **Hybrid Storage**: Smart data architecture - fast access via localStorage, bulk data in IndexedDB
+- **Database Schema**: Optimized schema with proper indexing for efficient queries
+- **Data Migration**: Version management and schema migration system
+- **Export/Import**: Data backup and restoration capabilities
+
+### ✅ Reports & Analytics Foundation (In Progress)
+- **Coming Soon UI**: Professional preview interface for planned analytics features
+- **Data Collection**: Session data being collected and structured for future reporting
+- **Preview Components**: Mockup cards showing planned productivity charts and insights
+- **Architecture Ready**: Database schema and data structures prepared for analytics implementation
 
 ## Technical Stack
 - **Frontend**: React 19 with TypeScript
-- **Routing**: React Router v7 for SPA navigation
-- **Styling**: Tailwind CSS v4 + shadcn/ui components
+- **Routing**: React Router v7 for SPA navigation  
+- **Styling**: Tailwind CSS v4 + Radix UI components
 - **Icons**: Lucide React icons
-- **State Management**: Zustand with localStorage persistence middleware
-- **Notifications**: Sonner toast library with custom theming
-- **Data Storage**: localStorage (local-first approach)
+- **State Management**: Zustand with localStorage + IndexedDB persistence
+- **Database**: IndexedDB via Dexie.js for robust local storage
+- **Notifications**: Sonner toast library + browser/audio notifications
 - **Build Tool**: Vite with SWC compiler
-- **Development**: ESLint, TypeScript compiler
-- **No Backend**: Complete privacy with local data storage
+- **Development**: ESLint, TypeScript strict mode
+- **Privacy**: 100% local-first, no backend required
 
-## Completed Features Summary
-**Core Timer (✅)**
-- Full pomodoro timer with multiple controls
-- Dual work/break modes with visual distinction
-- Inline editing of activities and durations
-- Audio and browser notifications
-- Cross-tab synchronization
+## Recent Major Improvements
 
-**Settings System (✅)**  
-- Comprehensive preferences management
-- Theme system with CSS custom properties
-- Notification testing and permission handling
-- Activity CRUD operations with bulk actions
-- Toast feedback for all user interactions
+### 🔧 **Timer Reliability Fixes**
+- Fixed timer completion detection with `justCompleted` state flag
+- Resolved Dexie IndexedDB compound index errors causing app crashes
+- Implemented proper session type preservation during time editing
+- Added timestamp-based timer persistence surviving browser restarts
 
-## Key Behaviors
-- **Timer Persistence**: Custom timer durations stick to current activity until switching
-- **Activity Switching**: New activities use default timers from settings
-- **No Limits**: No maximum or minimum time restrictions
-- **Single Session**: Only one active timer across all browser tabs
-- **Complete Privacy**: All data remains on user's device
-- **Theme Consistency**: System theme detection with manual override options
+### 🎨 **UX/UI Enhancements**  
+- Added prominent Break/Work toggle button with completion highlighting
+- Implemented smart time input handling with temporary validation states
+- Enhanced circular progress animation (removed CSS transition conflicts)
+- Added comprehensive tooltips and improved button accessibility
 
-## Privacy & Data
-- **100% Local**: All data stored on user's device
-- **No Tracking**: No analytics or data collection
-- **Offline First**: Works without internet connection
-- **User Control**: Complete ownership of personal data
+### 💾 **Data Architecture Overhaul**
+- Migrated from localStorage-only to hybrid localStorage + IndexedDB
+- Implemented proper database schema with migration system
+- Added comprehensive error handling and graceful degradation
+- Built robust session tracking and activity management systems
 
-## Implementation Details
+## Key Technical Achievements
 
-### Timer Features
-- **Dual Mode Timer**: Work mode (green) and Break mode (amber) with visual distinction
-- **Progress Visualization**: Animated circular progress bar with color-coded states
-- **Inline Editing**: Click-to-edit for activity names and timer durations
-- **Keyboard Support**: Enter/Escape key handling for inline edits
-- **Responsive Design**: Works on mobile, tablet, and desktop screens
+### 🚀 **Persistence Architecture**
+- **Timestamp-based timers**: Survive browser restarts and tab switches
+- **Hybrid data storage**: Fast localStorage + robust IndexedDB integration
+- **Smart state management**: Zustand with custom persistence middleware
+- **Cross-session reliability**: Timer state maintained across browser sessions
 
-### Settings Management
-- **Real-time Updates**: Settings changes apply immediately
-- **Validation**: Input validation for time durations (1-120 minutes for work, 1-60 for break)
-- **Permission Handling**: Graceful handling of browser notification permissions
-- **Theme Application**: System theme detection with manual override
+### 🔧 **Database Engineering**
+- **Dexie.js integration**: Type-safe IndexedDB wrapper with error handling
+- **Schema versioning**: Automatic database migrations with fallback strategies
+- **Compound index optimization**: Resolved IDBKeyRange parameter validation issues
+- **Data integrity**: Comprehensive error handling and graceful degradation
 
-### Data Management
-- **Persistent Storage**: All data saved to localStorage using Zustand middleware
-- **Activity Tracking**: Full CRUD operations for activities
-- **Settings Persistence**: All user preferences saved and restored
-- **Cross-Tab Sync**: Storage events keep multiple tabs in sync
+### 🎨 **UX Engineering**
+- **Session type preservation**: Time editing maintains work/break mode context
+- **Smart input handling**: Temporary validation states during user input
+- **Animation optimization**: CSS transition conflicts resolved for smooth progress bars
+- **Contextual interactions**: UI adapts based on timer state and completion status
 
-## Next Steps (Priority Order)
-1. **Session Tracking**: Implement session recording to localStorage
-2. **Reports Implementation**: Build analytics page with data visualization  
-3. **Data Export**: CSV/JSON export functionality
-4. **Advanced Features**: Additional productivity insights and statistics
+## Current Architecture
+
+### State Management Layer
+```
+Zustand Store (Main Thread)
+├── Timer State (localStorage) - Fast access
+├── Current Activity (localStorage) - UI state
+├── Settings (localStorage) - User preferences
+└── Data Cache (memory) - Recent sessions/activities
+
+IndexedDB Layer (Web Worker Ready)
+├── Activities Table - Full activity history
+├── Sessions Table - Complete session records
+├── Daily Stats - Aggregated productivity metrics
+└── Audio Files - Custom notification sounds
+```
+
+### Data Flow Patterns
+1. **UI Interactions** → Zustand Store → LocalStorage (immediate)
+2. **Data Operations** → Database Service → IndexedDB (persistent)
+3. **Cache Sync** → Store loads recent data from IndexedDB on startup
+4. **Background Tasks** → Session completion triggers data aggregation
+
+## Privacy & Security Model
+- **100% Client-side**: All data processing happens in browser
+- **No Network Requests**: Zero external API calls or tracking
+- **User Ownership**: Complete control over personal productivity data
+- **Offline First**: Full functionality without internet connection
+- **Export Freedom**: Data export prevents vendor lock-in
 
 ## Development Milestones
-- ✅ **v0.1.0**: MVP Timer (Basic pomodoro functionality)
-- ✅ **v0.2.0**: Enhanced Timer (Inline editing, break modes, notifications)  
-- ✅ **v0.3.0**: Settings System (Complete preferences and theme management)
-- ⏳ **v0.4.0**: Session Tracking (History recording and basic analytics)
-- ⏳ **v0.5.0**: Reports & Analytics (Visual insights and data export)
-- ⏳ **v1.0.0**: Production Ready (Polish, testing, documentation)
+
+### ✅ **Phase 1: MVP Foundation** (v0.1.0-0.2.0)
+- Basic timer functionality with persistent state
+- Activity management and inline editing
+- Notification system and theme support
+
+### ✅ **Phase 2: Enhanced UX** (v0.3.0-0.4.0)  
+- Advanced settings with input validation
+- Break/work mode toggle with smart transitions
+- Comprehensive activity management with archiving
+
+### ✅ **Phase 3: Data Platform** (v0.5.0-0.6.0)
+- IndexedDB integration with migration system
+- Session tracking and productivity analytics foundation
+- Data export and backup capabilities
+
+### 🔄 **Phase 4: Analytics Engine** (v0.7.0 - In Progress)
+- Visual productivity charts and insights
+- Goal setting and progress tracking
+- Advanced reporting and data visualization
+
+### ⏳ **Phase 5: Production Polish** (v0.8.0-1.0.0)
+- Performance optimization and testing
+- PWA capabilities and offline enhancements  
+- Documentation and community features
+
+## Technical Debt & Future Improvements
+
+### Performance Optimizations
+- [ ] Web Worker for heavy IndexedDB operations
+- [ ] Virtual scrolling for large activity/session lists
+- [ ] Lazy loading of historical data
+- [ ] Service Worker for true offline capability
+
+### Developer Experience
+- [ ] Comprehensive unit test coverage
+- [ ] E2E testing with Playwright
+- [ ] Component Storybook documentation
+- [ ] Performance monitoring and analytics
+
+### User Experience
+- [ ] Keyboard shortcuts and accessibility improvements
+- [ ] Mobile-first responsive design refinements
+- [ ] Advanced notification customization
+- [ ] Data visualization with interactive charts
