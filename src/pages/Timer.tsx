@@ -20,6 +20,7 @@ export default function Timer() {
     activities,
     settings,
     currentSessionType,
+    justCompleted,
     getTimeRemaining,
     checkTimerCompletion,
     startTimer,
@@ -103,11 +104,15 @@ export default function Timer() {
     }
   }, [isRunning, isPaused, timeRemaining]);
 
-  // Reset hasBeenStarted when time is manually changed
+  // Reset hasBeenStarted when time is manually changed (but not during auto-transitions)
+  const [isAutoTransition, setIsAutoTransition] = useState(false);
   useEffect(() => {
-    // Reset when totalDuration changes (manual time setting)
-    setHasBeenStarted(false);
-  }, [totalDuration]);
+    if (!isAutoTransition) {
+      // Reset when totalDuration changes (manual time setting)
+      setHasBeenStarted(false);
+    }
+    setIsAutoTransition(false); // Reset the flag
+  }, [totalDuration, isAutoTransition]);
 
   // Ensure timer starts properly by tracking actual start state
   useEffect(() => {
@@ -124,6 +129,7 @@ export default function Timer() {
       if (!isBreakMode && settings.autoStartBreak) {
         setTimeout(() => {
           const breakTime = settings.defaultBreakTime * 60 * 1000;
+          setIsAutoTransition(true); // Mark as auto-transition
           setCustomTimeMs(breakTime);
           setSessionType("break");
           startTimer();
@@ -132,6 +138,7 @@ export default function Timer() {
         // Break completed, switch back to work mode
         setSessionType("work");
         const workTime = settings.defaultWorkTime * 60 * 1000;
+        setIsAutoTransition(true); // Mark as auto-transition
         setCustomTimeMs(workTime);
       }
     }
@@ -168,12 +175,18 @@ export default function Timer() {
 
   const isEditable = !isRunning && !isPaused;
 
-  // Reset to default work time from settings
+  // Reset to default time for current mode from settings
   const resetToDefault = () => {
     stopNotificationSound(); // Stop any playing sound
-    const defaultTimeMs = settings.defaultWorkTime * 60 * 1000;
+    const defaultTimeMs = isBreakMode 
+      ? settings.defaultBreakTime * 60 * 1000
+      : settings.defaultWorkTime * 60 * 1000;
+    const currentMode = currentSessionType; // Capture current mode
     setCustomTimeMs(defaultTimeMs);
-    setSessionType("work");
+    // Restore the session type to preserve current mode
+    setTimeout(() => {
+      setSessionType(currentMode);
+    }, 0);
     setHasBeenStarted(false); // Reset the started state
   };
 
@@ -253,9 +266,13 @@ export default function Timer() {
     const currentSeconds = Math.floor((totalDuration % 60000) / 1000);
     if (mins >= 0 && mins <= 120) {
       const newTimeMs = (mins * 60 + currentSeconds) * 1000;
+      const currentMode = currentSessionType; // Capture current mode before making changes
       // Allow setting to 0, even though it can't be started
       setCustomTimeMs(newTimeMs);
-      setSessionType("work"); // Reset to work mode when manually setting time
+      // Restore the session type after setting custom time
+      setTimeout(() => {
+        setSessionType(currentMode);
+      }, 0);
       setHasBeenStarted(false); // Reset started state when manually editing
     }
     setIsEditingMinutes(false);
@@ -268,9 +285,13 @@ export default function Timer() {
     // Ensure seconds are within valid range
     if (secs >= 0 && secs <= 59) {
       const newTimeMs = (currentMinutes * 60 + secs) * 1000;
+      const currentMode = currentSessionType; // Capture current mode before making changes
       // Allow setting to 0, even though it can't be started
       setCustomTimeMs(newTimeMs);
-      setSessionType("work"); // Reset to work mode when manually setting time
+      // Restore the session type after setting custom time
+      setTimeout(() => {
+        setSessionType(currentMode);
+      }, 0);
       setHasBeenStarted(false); // Reset started state when manually editing
     }
     setIsEditingSeconds(false);
@@ -482,6 +503,45 @@ export default function Timer() {
 
         {/* Control Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+          {/* Break Mode Toggle Button */}
+          <button
+            onClick={() => {
+              if (isBreakMode) {
+                setSessionType("work");
+                const workTime = settings.defaultWorkTime * 60 * 1000;
+                setCustomTimeMs(workTime);
+              } else {
+                setSessionType("break");
+                const breakTime = settings.defaultBreakTime * 60 * 1000;
+                setCustomTimeMs(breakTime);
+              }
+              setHasBeenStarted(false);
+            }}
+            disabled={isRunning}
+            className={`group relative flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-medium shadow-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-ring/20 ${
+              isRunning
+                ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
+                : justCompleted && !isBreakMode
+                ? "bg-gradient-to-r from-warning to-warning/80 text-warning-foreground shadow-lg hover:shadow-xl transform hover:scale-105 border-2 border-warning/20 hover:border-warning/40 animate-pulse"
+                : isBreakMode
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg"
+                : "bg-card hover:bg-accent text-card-foreground border-2 border-border hover:border-accent-foreground/20"
+            }`}
+            title={isBreakMode ? "Switch to work mode" : "Switch to break mode"}
+          >
+            <Coffee
+              className={`w-4 h-4 transition-transform ${
+                justCompleted && !isBreakMode
+                  ? "group-hover:scale-125 group-hover:rotate-12"
+                  : ""
+              }`}
+            />
+            <span className="text-sm">{isBreakMode ? "Work" : "Break"}</span>
+            {justCompleted && !isBreakMode && (
+              <div className="w-2 h-2 bg-warning-foreground/60 rounded-full animate-ping"></div>
+            )}
+          </button>
+
           {/* Primary Action Button - Start/Pause */}
           {!isRunning ? (
             <button
@@ -540,7 +600,7 @@ export default function Timer() {
         </div>
 
         {/* Timer completion message */}
-        {timeRemaining === 0 && hasBeenStarted && (
+        {justCompleted && hasBeenStarted && (
           <div className="mt-6 p-4 bg-primary/10 border-2 border-primary/20 rounded-lg text-center">
             <p className="text-primary font-bold text-xl">
               {isBreakMode ? "☕ Break Complete!" : "🎉 Session Complete!"}
@@ -555,37 +615,6 @@ export default function Timer() {
                 Time to get back to work!
               </p>
             )}
-
-            <div className="flex justify-center gap-3 mt-4">
-              {!isBreakMode && !settings.autoStartBreak && (
-                <button
-                  onClick={() => {
-                    stopNotificationSound(); // Stop any playing sound
-                    resetTimer(); // Stop the timer first
-                    const breakTime = settings.defaultBreakTime * 60 * 1000;
-                    setCustomTimeMs(breakTime);
-                    setSessionType("break");
-                    setHasBeenStarted(false);
-                  }}
-                  className="group flex items-center justify-center space-x-3 bg-gradient-to-r from-warning to-warning/80 text-warning-foreground px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-warning/50 border-2 border-warning/20 hover:border-warning/40 animate-pulse"
-                >
-                  <Coffee className="w-6 h-6 transition-transform group-hover:scale-125 group-hover:rotate-12" />
-                  <span>Take a Break</span>
-                  <div className="w-2 h-2 bg-warning-foreground/60 rounded-full animate-ping"></div>
-                </button>
-              )}
-              {isBreakMode && (
-                <button
-                  onClick={() => {
-                    setSessionType("work");
-                    setHasBeenStarted(false);
-                  }}
-                  className="group flex items-center justify-center space-x-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-primary/30"
-                >
-                  <span>Back to Work</span>
-                </button>
-              )}
-            </div>
 
             {!isBreakMode && settings.autoStartBreak && (
               <p className="text-primary/80 text-sm mt-2">

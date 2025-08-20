@@ -44,6 +44,7 @@ interface TimerStore {
   isPaused: boolean;
   pausedTime: number; // How much time was spent paused (ms)
   currentSessionType: "work" | "break";
+  justCompleted: boolean; // Flag for just completed state
 
   // Activity state
   currentActivity: Activity | null;
@@ -153,6 +154,7 @@ export const useTimerStore = create<TimerStore>()(
       isPaused: false,
       pausedTime: 0,
       currentSessionType: "work",
+      justCompleted: false,
 
       // Activity state
       currentActivity: null,
@@ -171,6 +173,7 @@ export const useTimerStore = create<TimerStore>()(
           isPaused: false,
           startTime: isPaused ? Date.now() - pausedTime : Date.now(),
           pausedTime: 0,
+          justCompleted: false, // Clear completion flag when starting
         });
       },
 
@@ -219,11 +222,13 @@ export const useTimerStore = create<TimerStore>()(
           isRunning: false,
           isPaused: false,
           pausedTime: 0,
+          justCompleted: false, // Clear completion flag when setting custom time
         });
       },
 
       getTimeRemaining: () => {
-        const { startTime, totalDuration, isPaused, pausedTime } = get();
+        const { startTime, totalDuration, isPaused, pausedTime, justCompleted } = get();
+        if (justCompleted) return 0; // Show 0 when just completed
         if (!startTime) return totalDuration;
         if (isPaused) return totalDuration - pausedTime;
         const elapsed = Date.now() - startTime;
@@ -261,6 +266,7 @@ export const useTimerStore = create<TimerStore>()(
             isRunning: false, 
             startTime: null,
             pausedTime: 0,
+            justCompleted: true, // Mark as just completed
             sessions: [...sessions, session]
           });
 
@@ -578,6 +584,7 @@ export const useTimerStore = create<TimerStore>()(
         isPaused: state.isPaused,
         pausedTime: state.pausedTime,
         currentSessionType: state.currentSessionType,
+        justCompleted: state.justCompleted,
         // Large data stays in IndexedDB
         activities: [],
         sessions: []
