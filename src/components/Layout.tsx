@@ -91,7 +91,7 @@ export default function Layout() {
         </div>
       </nav>
 
-      <main className="relative flex-1 flex">
+      <main className="relative flex-1 flex w-full">
         <Outlet />
       </main>
 

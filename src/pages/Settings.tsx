@@ -193,7 +193,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="h-full p-4 sm:p-8">
+    <div className="w-full h-full p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">

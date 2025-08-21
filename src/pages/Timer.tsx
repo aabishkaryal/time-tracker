@@ -314,7 +314,7 @@ export default function Timer() {
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+    <div className="w-full flex-1 flex items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-2xl mx-auto">
         {/* Activity Name - Inline Editable */}
         <div className="text-center mb-8">
