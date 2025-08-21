@@ -1,6 +1,8 @@
 import {
+  AlertTriangle,
   Bell,
   Clock,
+  Database,
   Monitor,
   Moon,
   Palette,
@@ -12,10 +14,8 @@ import {
   Trash2,
   Volume2,
   VolumeX,
-  Database,
-  AlertTriangle,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import {
@@ -29,13 +29,13 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Switch } from "../components/ui/switch";
+import { databaseService } from "../lib/database-service";
 import {
   getNotificationPermission,
   requestNotificationPermission,
   stopNotificationSound,
 } from "../lib/notifications";
 import { useTimerStore } from "../store";
-import { databaseService } from "../lib/database-service";
 
 export default function Settings() {
   const {
@@ -53,11 +53,15 @@ export default function Settings() {
   const [notificationPermission, setNotificationPermission] = useState(
     getNotificationPermission()
   );
-  
+
   // Local state for time inputs to allow temporary invalid states while typing
-  const [workTimeInput, setWorkTimeInput] = useState(settings.defaultWorkTime.toString());
-  const [breakTimeInput, setBreakTimeInput] = useState(settings.defaultBreakTime.toString());
-  
+  const [workTimeInput, setWorkTimeInput] = useState(
+    settings.defaultWorkTime.toString()
+  );
+  const [breakTimeInput, setBreakTimeInput] = useState(
+    settings.defaultBreakTime.toString()
+  );
+
   // Sync local state when settings change (e.g., from reset)
   useEffect(() => {
     setWorkTimeInput(settings.defaultWorkTime.toString());
@@ -162,34 +166,34 @@ export default function Settings() {
     try {
       // Clear IndexedDB
       await databaseService.clearAllData();
-      
+
       // Clear Zustand store data
       clearAllActivities();
       clearAllSessions();
-      
+
       // Clear localStorage (Zustand persist will handle this when store is cleared)
-      localStorage.removeItem('timer-storage');
-      
+      localStorage.removeItem("timer-storage");
+
       // Reset settings to defaults but keep current theme
       const currentTheme = settings.theme;
       resetSettings();
       updateSettings({ theme: currentTheme });
-      
-      toast.success('All data cleared successfully!');
+
+      toast.success("All data cleared successfully!");
       setShowClearDataConfirm(false);
-      
+
       // Reload the page to ensure clean state
       setTimeout(() => {
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error('Failed to clear all data:', error);
-      toast.error('Failed to clear data. Please try again.');
+      console.error("Failed to clear all data:", error);
+      toast.error("Failed to clear data. Please try again.");
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] p-4 sm:p-8">
+    <div className="h-full p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -229,7 +233,7 @@ export default function Settings() {
                     onChange={(e) => handleWorkTimeChange(e.target.value)}
                     onBlur={handleWorkTimeBlur}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         handleWorkTimeBlur();
                         e.currentTarget.blur();
                       }
@@ -253,7 +257,7 @@ export default function Settings() {
                     onChange={(e) => handleBreakTimeChange(e.target.value)}
                     onBlur={handleBreakTimeBlur}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         handleBreakTimeBlur();
                         e.currentTarget.blur();
                       }
@@ -582,7 +586,8 @@ export default function Settings() {
                 Clear All Data
               </CardTitle>
               <CardDescription>
-                Permanently delete all activities, sessions, and custom settings. This cannot be undone.
+                Permanently delete all activities, sessions, and custom
+                settings. This cannot be undone.
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -80,7 +80,6 @@ export class TimeTrackerDatabase extends Dexie {
   async initializeDatabase(): Promise<void> {
     try {
       await this.open();
-      console.log("Database initialized successfully");
     } catch (error) {
       console.error("Failed to initialize database:", error);
       throw new Error("Database initialization failed");
@@ -104,7 +103,6 @@ export class TimeTrackerDatabase extends Dexie {
           ]);
         }
       );
-      console.log("All data cleared successfully");
     } catch (error) {
       console.error("Failed to clear data:", error);
       throw new Error("Data clearing failed");
@@ -165,7 +163,6 @@ export class TimeTrackerDatabase extends Dexie {
           }
         }
       );
-      console.log("Data imported successfully");
     } catch (error) {
       console.error("Failed to import data:", error);
       throw new Error("Data import failed");
@@ -345,7 +342,6 @@ export class TimeTrackerDatabase extends Dexie {
       // Delete audio files older than 30 days
       results.deletedAudioFiles = await this.deleteOldAudioFiles(30);
 
-      console.log("Database maintenance completed:", results);
       return results;
     } catch (error) {
       console.error("Database maintenance failed:", error);

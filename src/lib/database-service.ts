@@ -39,7 +39,6 @@ export class DatabaseService {
     try {
       await timeTrackerDb.initializeDatabase();
       this.initialized = true;
-      console.log("Database service initialized successfully");
     } catch (error) {
       console.error("Failed to initialize database service:", error);
       throw error;
@@ -287,7 +286,6 @@ export class DatabaseService {
 
     try {
       await timeTrackerDb.importData(backupData);
-      console.log("Backup imported successfully");
     } catch (error) {
       console.error("Failed to import backup:", error);
       throw error;

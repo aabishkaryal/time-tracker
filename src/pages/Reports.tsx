@@ -1,4 +1,10 @@
-import { BarChart3, TrendingUp, Calendar, Target, PieChart } from "lucide-react";
+import {
+  BarChart3,
+  Calendar,
+  PieChart,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -9,7 +15,7 @@ import {
 
 export default function Reports() {
   return (
-    <div className="min-h-[calc(100vh-4rem)] p-4 sm:p-8">
+    <div className="h-full p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -42,7 +48,9 @@ export default function Reports() {
                 <div className="h-32 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
                   <div className="text-center">
                     <TrendingUp className="w-8 h-8 text-primary/60 mx-auto mb-2" />
-                    <p className="text-muted-foreground text-sm">Chart Preview</p>
+                    <p className="text-muted-foreground text-sm">
+                      Chart Preview
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -62,7 +70,9 @@ export default function Reports() {
                 <div className="h-32 bg-gradient-to-br from-warning/5 to-warning/10 rounded-lg flex items-center justify-center border border-warning/20">
                   <div className="text-center">
                     <PieChart className="w-8 h-8 text-warning/60 mx-auto mb-2" />
-                    <p className="text-muted-foreground text-sm">Pie Chart Preview</p>
+                    <p className="text-muted-foreground text-sm">
+                      Pie Chart Preview
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -82,7 +92,9 @@ export default function Reports() {
                 <div className="h-32 bg-gradient-to-br from-green-500/5 to-green-500/10 rounded-lg flex items-center justify-center border border-green-500/20">
                   <div className="text-center">
                     <Calendar className="w-8 h-8 text-green-500/60 mx-auto mb-2" />
-                    <p className="text-muted-foreground text-sm">Calendar Preview</p>
+                    <p className="text-muted-foreground text-sm">
+                      Calendar Preview
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -102,7 +114,9 @@ export default function Reports() {
                 <div className="h-32 bg-gradient-to-br from-purple-500/5 to-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
                   <div className="text-center">
                     <Target className="w-8 h-8 text-purple-500/60 mx-auto mb-2" />
-                    <p className="text-muted-foreground text-sm">Progress Preview</p>
+                    <p className="text-muted-foreground text-sm">
+                      Progress Preview
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -120,8 +134,8 @@ export default function Reports() {
                   Coming Soon
                 </h2>
                 <p className="text-muted-foreground text-lg leading-relaxed">
-                  Comprehensive reports and analytics are in development. 
-                  Keep using the timer to build your data history!
+                  Comprehensive reports and analytics are in development. Keep
+                  using the timer to build your data history!
                 </p>
                 <div className="bg-card/60 rounded-lg p-6 mt-8">
                   <h3 className="font-semibold text-foreground mb-4">

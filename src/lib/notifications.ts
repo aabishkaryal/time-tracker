@@ -45,7 +45,6 @@ export function stopNotificationSound(): void {
     }
   } catch (error) {
     // Silent fail - stopping sounds shouldn't throw errors to user
-    console.log("Error stopping notification sounds", error);
   }
 }
 

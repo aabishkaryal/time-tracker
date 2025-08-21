@@ -178,7 +178,7 @@ export default function Timer() {
   // Reset to default time for current mode from settings
   const resetToDefault = () => {
     stopNotificationSound(); // Stop any playing sound
-    const defaultTimeMs = isBreakMode 
+    const defaultTimeMs = isBreakMode
       ? settings.defaultBreakTime * 60 * 1000
       : settings.defaultWorkTime * 60 * 1000;
     const currentMode = currentSessionType; // Capture current mode
@@ -314,7 +314,7 @@ export default function Timer() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-8">
+    <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-2xl mx-auto">
         {/* Activity Name - Inline Editable */}
         <div className="text-center mb-8">

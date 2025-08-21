@@ -1,17 +1,17 @@
 import {
   Activity,
+  Archive,
+  ArchiveRestore,
   Check,
+  ChevronDown,
+  ChevronRight,
+  Clock,
   Edit3,
   Plus,
   Trash2,
-  Clock,
   TrendingUp,
-  Archive,
-  ArchiveRestore,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -43,13 +43,16 @@ export default function Activities() {
 
   const todaysSessions = getTodaysSessions();
   const todaysStats = getTodaysActivityStats();
-  const totalTimeToday = todaysSessions.reduce((total, session) => total + session.duration, 0);
-  
+  const totalTimeToday = todaysSessions.reduce(
+    (total, session) => total + session.duration,
+    0
+  );
+
   const formatTime = (milliseconds: number) => {
     const minutes = Math.floor(milliseconds / 60000);
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    
+
     if (hours > 0) {
       return `${hours}h ${remainingMinutes}m`;
     }
@@ -60,7 +63,9 @@ export default function Activities() {
   const [editingName, setEditingName] = useState("");
   const [newActivityName, setNewActivityName] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [archivedActivities, setArchivedActivities] = useState<Array<{id: string, name: string, createdAt: Date}>>([]);
+  const [archivedActivities, setArchivedActivities] = useState<
+    Array<{ id: string; name: string; createdAt: Date }>
+  >([]);
   const [showArchived, setShowArchived] = useState(false);
 
   const handleCreateActivity = async () => {
@@ -133,7 +138,7 @@ export default function Activities() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] p-4 sm:p-8">
+    <div className="h-full p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -257,7 +262,10 @@ export default function Activities() {
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Created {new Date(activity.createdAt).toLocaleDateString()}
+                                Created{" "}
+                                {new Date(
+                                  activity.createdAt
+                                ).toLocaleDateString()}
                               </p>
                             </div>
                             <div className="flex items-center gap-1">
@@ -275,7 +283,10 @@ export default function Activities() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() =>
-                                  startEditingActivity(activity.id, activity.name)
+                                  startEditingActivity(
+                                    activity.id,
+                                    activity.name
+                                  )
                                 }
                                 title="Edit activity name"
                               >
@@ -284,7 +295,9 @@ export default function Activities() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleArchiveActivity(activity.id)}
+                                onClick={() =>
+                                  handleArchiveActivity(activity.id)
+                                }
                                 className="text-warning hover:text-warning"
                                 title="Archive activity"
                               >
@@ -345,9 +358,12 @@ export default function Activities() {
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <Activity className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">No activities yet</h3>
+                  <h3 className="text-lg font-medium mb-2">
+                    No activities yet
+                  </h3>
                   <p className="text-sm">
-                    Create your first activity above to start organizing your work
+                    Create your first activity above to start organizing your
+                    work
                   </p>
                 </div>
               )}
@@ -358,16 +374,21 @@ export default function Activities() {
           {archivedActivities.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle 
+                <CardTitle
                   className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
                   onClick={() => setShowArchived(!showArchived)}
                 >
-                  {showArchived ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                  {showArchived ? (
+                    <ChevronDown className="w-5 h-5" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5" />
+                  )}
                   <Archive className="w-5 h-5" />
                   Archived Activities ({archivedActivities.length})
                 </CardTitle>
                 <CardDescription>
-                  Activities that have been archived and are hidden from the main timer
+                  Activities that have been archived and are hidden from the
+                  main timer
                 </CardDescription>
               </CardHeader>
               {showArchived && (
@@ -388,7 +409,8 @@ export default function Activities() {
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Created {new Date(activity.createdAt).toLocaleDateString()}
+                            Created{" "}
+                            {new Date(activity.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
@@ -437,16 +459,20 @@ export default function Activities() {
                     <div className="text-2xl font-bold text-primary">
                       {formatTime(totalTimeToday)}
                     </div>
-                    <div className="text-sm text-muted-foreground">Total Time</div>
+                    <div className="text-sm text-muted-foreground">
+                      Total Time
+                    </div>
                   </div>
                   <div className="text-center p-3 bg-primary/5 rounded-lg">
                     <div className="text-2xl font-bold text-primary">
                       {todaysSessions.length}
                     </div>
-                    <div className="text-sm text-muted-foreground">Sessions</div>
+                    <div className="text-sm text-muted-foreground">
+                      Sessions
+                    </div>
                   </div>
                 </div>
-                
+
                 {todaysStats.length > 0 ? (
                   <div>
                     <h4 className="font-medium mb-3 flex items-center gap-2">
@@ -455,14 +481,25 @@ export default function Activities() {
                     </h4>
                     <div className="space-y-2">
                       {todaysStats.map((stat, index) => (
-                        <div key={stat.activityName} className="flex items-center justify-between p-2 bg-accent/30 rounded">
+                        <div
+                          key={stat.activityName}
+                          className="flex items-center justify-between p-2 bg-accent/30 rounded"
+                        >
                           <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-primary">#{index + 1}</span>
-                            <span className="font-medium">{stat.activityName}</span>
+                            <span className="text-lg font-bold text-primary">
+                              #{index + 1}
+                            </span>
+                            <span className="font-medium">
+                              {stat.activityName}
+                            </span>
                           </div>
                           <div className="text-right text-sm">
-                            <div className="font-medium">{formatTime(stat.totalTime)}</div>
-                            <div className="text-muted-foreground">{stat.sessionCount} sessions</div>
+                            <div className="font-medium">
+                              {formatTime(stat.totalTime)}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {stat.sessionCount} sessions
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -472,7 +509,9 @@ export default function Activities() {
                   <div className="text-center py-6 text-muted-foreground">
                     <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No completed sessions today</p>
-                    <p className="text-sm">Start a timer to see your progress!</p>
+                    <p className="text-sm">
+                      Start a timer to see your progress!
+                    </p>
                   </div>
                 )}
               </div>
