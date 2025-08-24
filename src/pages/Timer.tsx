@@ -1,4 +1,4 @@
-import { Coffee, Pause, Play, RotateCcw, Square } from "lucide-react";
+import { Coffee, Pause, Play, RotateCcw, RefreshCw } from "lucide-react";
 import React, { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { CircularProgress } from "../components/CircularProgress";
 import {
@@ -65,27 +65,39 @@ export default function Timer() {
 
   useEffect(() => {
     let animationId: number;
+    let completionCheckInterval: number;
 
     const updateTimer = () => {
       if (isRunning) {
         // Force re-render by incrementing tick
         setUpdateTick();
-        // Check for timer completion
-        checkTimerCompletion().catch((error) => {
-          console.error("Timer completion check failed:", error);
-        });
-        // Schedule next frame
+        // Schedule next frame for smooth UI updates
         animationId = requestAnimationFrame(updateTimer);
       }
     };
 
+    const checkCompletion = () => {
+      if (isRunning) {
+        // Check for timer completion - this runs even when tab is not focused
+        checkTimerCompletion().catch((error) => {
+          console.error("Timer completion check failed:", error);
+        });
+      }
+    };
+
     if (isRunning) {
+      // Start UI updates with requestAnimationFrame for smooth rendering
       animationId = requestAnimationFrame(updateTimer);
+      // Start completion checks with setInterval to work when tab is not focused
+      completionCheckInterval = window.setInterval(checkCompletion, 100); // Check every 100ms
     }
 
     return () => {
       if (animationId) {
         cancelAnimationFrame(animationId);
+      }
+      if (completionCheckInterval) {
+        clearInterval(completionCheckInterval);
       }
     };
   }, [isRunning, checkTimerCompletion]);
@@ -190,10 +202,12 @@ export default function Timer() {
     setHasBeenStarted(false); // Reset the started state
   };
 
-  const handleStopTimer = () => {
+  const handleRestartTimer = () => {
     stopNotificationSound(); // Stop any playing sound
-    resetTimer(); // Reset timer to current totalTime
+    resetTimer(); // Reset timer state
     setHasBeenStarted(false); // Reset the started state
+    // Start timer immediately with current totalDuration
+    startTimer();
   };
 
   const handleActivityChange = (activityId: string) => {
@@ -577,14 +591,14 @@ export default function Timer() {
 
           {/* Secondary Actions */}
           <div className="flex space-x-4">
-            {/* Stop Button - Reset to current custom time */}
+            {/* Restart Button - Reset and start with current time */}
             <button
-              onClick={handleStopTimer}
+              onClick={handleRestartTimer}
               className="group relative flex items-center justify-center space-x-2 bg-card hover:bg-accent text-card-foreground px-6 py-4 rounded-xl font-medium border-2 border-border hover:border-accent-foreground/20 shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-ring/20"
-              title="Stop and reset to current time"
+              title="Restart timer with current time"
             >
-              <Square className="w-5 h-5 transition-transform group-hover:scale-110" />
-              <span className="hidden sm:inline">Stop</span>
+              <RefreshCw className="w-5 h-5 transition-transform group-hover:rotate-180 duration-300" />
+              <span className="hidden sm:inline">Restart</span>
             </button>
 
             {/* Reset Button - Reset to default time */}
