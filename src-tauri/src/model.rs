@@ -8,6 +8,7 @@ pub struct Category {
     pub time: i64,
     pub archived: bool,
     pub current: bool,
+    pub daily_target: i64,
 }
 
 #[derive(Serialize, Deserialize)]

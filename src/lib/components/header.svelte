@@ -3,14 +3,14 @@
 	import { currentTimeStore } from '$lib/store';
 	import { toast } from 'svelte-sonner';
 
-	async function goToArchives() {
-		if (window.location.pathname === '/archives') return;
+	async function goToActivities() {
+		if (window.location.pathname === '/activities') return;
 
 		if ($currentTimeStore !== null) {
-			toast.error('Stop current timer to view archives');
+			toast.error('Stop current timer to view activities');
 			return;
 		}
-		window.location.href = '/archives';
+		window.location.href = '/activities';
 	}
 
 	async function goToHome() {
@@ -28,7 +28,7 @@
 	<h1 class="text-2xl font-bold">Time Tracker</h1>
 	<div class="flex flex-row">
 		<Button variant="link" class="text-white" on:click={goToHome}>Home</Button>
-		<Button variant="link" class="text-white" on:click={goToArchives}>Archives</Button>
+		<Button variant="link" class="text-white" on:click={goToActivities}>Activities</Button>
 		<Button variant="link" class="text-white" on:click={goToHistory}>History</Button>
 	</div>
 </header>

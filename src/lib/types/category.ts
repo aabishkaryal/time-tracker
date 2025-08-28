@@ -5,4 +5,5 @@ export type Category = {
 	time: number;
 	archived: boolean;
 	current: boolean;
+	daily_target: number;
 };

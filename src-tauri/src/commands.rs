@@ -1,8 +1,9 @@
 use tauri::command;
 
 use crate::db::{
-    add_category, add_timer, archive_category, get_active_categories_info, get_all_categories_info,
-    get_archived_categories_info, get_current_category, restore_category, update_current_category,
+    add_category, add_timer, archive_category, delete_category, get_active_categories_info, get_all_categories_info,
+    get_archived_categories_info, get_current_category, restore_category, update_category_name, 
+    update_category_target, update_current_category,
 };
 use crate::model::Category;
 
@@ -93,5 +94,29 @@ pub fn restore_category_command(app: tauri::AppHandle, uuid: String) -> Result<(
     match restore_category(&app, &uuid) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Failed to restore category: {}", e)),
+    }
+}
+
+#[command]
+pub fn delete_category_command(app: tauri::AppHandle, uuid: String) -> Result<(), String> {
+    match delete_category(&app, &uuid) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to delete category: {}", e)),
+    }
+}
+
+#[command]
+pub fn update_category_name_command(app: tauri::AppHandle, uuid: String, new_name: String) -> Result<(), String> {
+    match update_category_name(&app, &uuid, &new_name) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to update category name: {}", e)),
+    }
+}
+
+#[command]
+pub fn update_category_target_command(app: tauri::AppHandle, uuid: String, daily_target: i64) -> Result<(), String> {
+    match update_category_target(&app, &uuid, daily_target) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to update category target: {}", e)),
     }
 }

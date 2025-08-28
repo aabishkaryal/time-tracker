@@ -13,6 +13,7 @@ fn map_category(row: &rusqlite::Row) -> Result<Category, rusqlite::Error> {
         archived: row.get::<_, i64>(3)? != 0,
         current: row.get::<_, i64>(4)? != 0,
         time: row.get(5)?,
+        daily_target: row.get(6)?,
     })
 }
 
@@ -22,7 +23,7 @@ fn query_categories(
     date: &str,
 ) -> Result<Vec<Category>, DatabaseError> {
     let mut query = String::from(
-      "SELECT c.uuid, c.name, c.icon_name, c.archived, c.current, IFNULL(SUM(t.duration), 0) AS total_time
+      "SELECT c.uuid, c.name, c.icon_name, c.archived, c.current, IFNULL(SUM(t.duration), 0) AS total_time, c.daily_target
       FROM category c
       LEFT JOIN timer t ON c.uuid = t.category_uuid AND date(?) = date(t.start_time, 'unixepoch')",
   );
@@ -135,6 +136,44 @@ pub fn restore_category(app: &AppHandle, category_uuid: &str) -> Result<(), Data
     conn.execute(
         "UPDATE category SET archived = 0 WHERE uuid = ?1",
         params![category_uuid],
+    )?;
+    Ok(())
+}
+
+pub fn delete_category(app: &AppHandle, category_uuid: &str) -> Result<(), DatabaseError> {
+    let mut conn = Connection::open(db_path(app))?;
+    let tx = conn.transaction()?;
+    
+    // First delete all associated timers
+    tx.execute(
+        "DELETE FROM timer WHERE category_uuid = ?1",
+        params![category_uuid],
+    )?;
+    
+    // Then delete the category
+    tx.execute(
+        "DELETE FROM category WHERE uuid = ?1",
+        params![category_uuid],
+    )?;
+    
+    tx.commit()?;
+    Ok(())
+}
+
+pub fn update_category_name(app: &AppHandle, category_uuid: &str, new_name: &str) -> Result<(), DatabaseError> {
+    let conn = Connection::open(db_path(app))?;
+    conn.execute(
+        "UPDATE category SET name = ?1 WHERE uuid = ?2",
+        params![new_name, category_uuid],
+    )?;
+    Ok(())
+}
+
+pub fn update_category_target(app: &AppHandle, category_uuid: &str, daily_target: i64) -> Result<(), DatabaseError> {
+    let conn = Connection::open(db_path(app))?;
+    conn.execute(
+        "UPDATE category SET daily_target = ?1 WHERE uuid = ?2",
+        params![daily_target, category_uuid],
     )?;
     Ok(())
 }
