@@ -4,33 +4,60 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
-	import { EVENT_CATEGORY_LIST_UPDATED } from '$lib/event_names';
+	import { EVENT_CATEGORY_LIST_UPDATED, EVENT_CURRENT_CATEGORY_UPDATED } from '$lib/event_names';
 	import { publish } from '$lib/events';
 	import icons from '$lib/icon';
 	import type { Category } from '$lib/types/category';
 	import { invoke } from '@tauri-apps/api';
-	import { Archive, Edit, ShieldPlus, Trash2 } from 'lucide-svelte';
+	import { Archive, Pencil, ShieldPlus, Trash2 } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
+	import dayjs from 'dayjs';
 	import TooltipButton from './tooltipButton.svelte';
 
 	export let categories: Category[];
 	export let type: 'active' | 'archived' = 'active';
+	export let activeCategoryCount: number = 0;
 
 	// Dialog states
 	let editDialogOpen = false;
+	let confirmDialogOpen = false;
 	let editingCategory: Category | null = null;
 	let editName = '';
 	let editTarget = 0;
+	
+	// Confirmation dialog state
+	let confirmAction: 'archive' | 'delete' | null = null;
+	let confirmCategory: Category | null = null;
 
-	async function archiveCategory(uuid: string, categoryName: string) {
-		if (confirm(`Are you sure you want to archive "${categoryName}"?`)) {
-			try {
-				await invoke('archive_category_command', { uuid });
-				publish(EVENT_CATEGORY_LIST_UPDATED);
-				toast.success(`Successfully archived category "${categoryName}"`);
-			} catch (err) {
-				toast.error(`error archiving category ${err}`);
+	function showArchiveConfirm(category: Category) {
+		if (activeCategoryCount <= 1) {
+			toast.error(
+				'Cannot archive the last active category. You must have at least one category available for time tracking.'
+			);
+			return;
+		}
+		confirmAction = 'archive';
+		confirmCategory = category;
+		confirmDialogOpen = true;
+	}
+
+	async function archiveCategory() {
+		if (!confirmCategory) return;
+		
+		try {
+			const wasCurrentCategory = confirmCategory.current;
+			await invoke('archive_category_command', { uuid: confirmCategory.uuid });
+			
+			// If we archived the current category, switch to another one
+			if (wasCurrentCategory) {
+				await switchToRandomCategory();
 			}
+			
+			publish(EVENT_CATEGORY_LIST_UPDATED);
+			toast.success(`Successfully archived category "${confirmCategory.name}"`);
+			closeConfirmDialog();
+		} catch (err) {
+			toast.error(`error archiving category ${err}`);
 		}
 	}
 
@@ -44,19 +71,36 @@
 		}
 	}
 
-	async function deleteCategory(uuid: string, categoryName: string) {
-		if (
-			confirm(
-				`Are you sure you want to permanently delete "${categoryName}"? This will also delete all associated time tracking data.`
-			)
-		) {
-			try {
-				await invoke('delete_category_command', { uuid });
-				publish(EVENT_CATEGORY_LIST_UPDATED);
-				toast.success(`Successfully deleted category "${categoryName}"`);
-			} catch (err) {
-				toast.error(`error deleting category ${err}`);
+	function showDeleteConfirm(category: Category) {
+		// For active categories, ensure at least one remains after deletion
+		if (type === 'active' && activeCategoryCount <= 1) {
+			toast.error(
+				'Cannot delete the last active category. You must have at least one category available for time tracking.'
+			);
+			return;
+		}
+		confirmAction = 'delete';
+		confirmCategory = category;
+		confirmDialogOpen = true;
+	}
+
+	async function deleteCategory() {
+		if (!confirmCategory) return;
+		
+		try {
+			const wasCurrentCategory = confirmCategory.current;
+			await invoke('delete_category_command', { uuid: confirmCategory.uuid });
+			
+			// If we deleted the current category, switch to another one
+			if (wasCurrentCategory && type === 'active') {
+				await switchToRandomCategory();
 			}
+			
+			publish(EVENT_CATEGORY_LIST_UPDATED);
+			toast.success(`Successfully deleted category "${confirmCategory.name}"`);
+			closeConfirmDialog();
+		} catch (err) {
+			toast.error(`error deleting category ${err}`);
 		}
 	}
 
@@ -106,6 +150,48 @@
 		editingCategory = null;
 		editName = '';
 		editTarget = 0;
+	}
+
+	function closeConfirmDialog() {
+		confirmDialogOpen = false;
+		confirmAction = null;
+		confirmCategory = null;
+	}
+
+	async function handleConfirmAction() {
+		if (confirmAction === 'archive') {
+			await archiveCategory();
+		} else if (confirmAction === 'delete') {
+			await deleteCategory();
+		}
+	}
+
+	async function switchToRandomCategory() {
+		try {
+			// Get fresh list of active categories
+			const activeCategories: Category[] = await invoke('get_active_categories_info_command', {
+				date: dayjs().format('YYYY-MM-DD')
+			});
+			
+			// Filter out the category we're about to archive/delete
+			const availableCategories = activeCategories.filter(cat => 
+				!cat.archived && 
+				cat.uuid !== confirmCategory?.uuid
+			);
+			
+			if (availableCategories.length > 0) {
+				// Pick a random category from available ones
+				const randomIndex = Math.floor(Math.random() * availableCategories.length);
+				const newCurrentCategory = availableCategories[randomIndex];
+				
+				await invoke('update_current_category_command', { uuid: newCurrentCategory.uuid });
+				publish(EVENT_CURRENT_CATEGORY_UPDATED);
+				toast.success(`Switched to "${newCurrentCategory.name}" category`);
+			}
+		} catch (err) {
+			console.error('Error switching category:', err);
+			// Don't show error toast as this is a background operation
+		}
 	}
 
 	function formatTime(seconds: number): string {
@@ -202,12 +288,12 @@
 										tooltip="Edit Category"
 										variant="ghost"
 										onClick={() => openEditDialog(category)}>
-										<Edit class="h-4 w-4" />
+										<Pencil class="h-4 w-4" />
 									</TooltipButton>
 									<TooltipButton
 										tooltip="Archive Category"
 										variant="secondary"
-										onClick={() => archiveCategory(category.uuid, category.name)}>
+										onClick={() => showArchiveConfirm(category)}>
 										<Archive class="h-4 w-4" />
 									</TooltipButton>
 								{:else}
@@ -221,7 +307,7 @@
 								<TooltipButton
 									tooltip="Delete Category"
 									variant="destructive"
-									onClick={() => deleteCategory(category.uuid, category.name)}>
+									onClick={() => showDeleteConfirm(category)}>
 									<Trash2 class="h-4 w-4" />
 								</TooltipButton>
 							</div>
@@ -274,6 +360,42 @@
 					editTarget < 0 ||
 					editTarget > 24}>
 				Save Changes
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Confirmation Dialog -->
+<Dialog.Root bind:open={confirmDialogOpen}>
+	<Dialog.Content class="sm:max-w-md">
+		<Dialog.Header>
+			<Dialog.Title>
+				{#if confirmAction === 'archive'}
+					Archive Category
+				{:else if confirmAction === 'delete'}
+					Delete Category
+				{/if}
+			</Dialog.Title>
+			<Dialog.Description>
+				{#if confirmAction === 'archive'}
+					Are you sure you want to archive "{confirmCategory?.name}"? You can restore it later from the archived tab.
+				{:else if confirmAction === 'delete'}
+					Are you sure you want to permanently delete "{confirmCategory?.name}"? This will also delete all associated time tracking data and cannot be undone.
+				{/if}
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="flex gap-2">
+			<Button variant="outline" on:click={closeConfirmDialog}>
+				Cancel
+			</Button>
+			<Button 
+				variant={confirmAction === 'delete' ? 'destructive' : 'default'}
+				on:click={handleConfirmAction}>
+				{#if confirmAction === 'archive'}
+					Archive
+				{:else if confirmAction === 'delete'}
+					Delete
+				{/if}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

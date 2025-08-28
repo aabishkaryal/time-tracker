@@ -89,7 +89,7 @@
 								These are your currently active categories. You can archive or delete them.
 							</p>
 						</div>
-						<ActivitiesTable categories={activeCategories} type="active" />
+						<ActivitiesTable categories={activeCategories} type="active" activeCategoryCount={activeCategories.length} />
 					</div>
 				</Tabs.Content>
 
@@ -101,7 +101,7 @@
 								These categories have been archived. You can restore them or permanently delete them.
 							</p>
 						</div>
-						<ActivitiesTable categories={archivedCategories} type="archived" />
+						<ActivitiesTable categories={archivedCategories} type="archived" activeCategoryCount={activeCategories.length} />
 					</div>
 				</Tabs.Content>
 			</Tabs.Root>
